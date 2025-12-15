@@ -72,6 +72,13 @@ class ViewStockTransaction extends ViewRecord
                             ->label("Book Title")
                             ->weight("semibold"),
 
+                        TextEntry::make("book.isbn")
+                            ->label("ISBN")
+                            ->copyable()
+                            ->icon("heroicon-o-qr-code"),
+
+                        TextEntry::make("book.author.name")->label("Author"),
+
                         TextEntry::make("quantity")
                             ->label("Quantity")
                             ->formatStateUsing(function ($record, $state) {
@@ -107,7 +114,7 @@ class ViewStockTransaction extends ViewRecord
                             ->weight("bold")
                             ->color("primary"),
                     ])
-                    ->columns(4)
+                    ->columns(6)
                     ->columnSpanFull(),
             ]),
         ]);

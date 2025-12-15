@@ -62,6 +62,12 @@ class StockTransactionsRelationManager extends RelationManager
                     ->badge()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make("book.isbn")
+                    ->label("ISBN")
+                    ->searchable()
+                    ->copyable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make("quantity")
                     ->label("Quantity")
                     ->alignCenter()

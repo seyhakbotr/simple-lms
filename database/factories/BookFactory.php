@@ -20,16 +20,16 @@ class BookFactory extends Factory
     public function definition(): array
     {
         return [
-            'author_id' => Author::factory(),
-            'publisher_id' => Publisher::factory(),
-            'genre_id' => Genre::factory(),
-            'title' => fake()->name(),
-            'isbn' => fake()->unique()->isbn13(),
-            'price' => fake()->randomFloat(2, 0, 100),
-            'description' => fake()->realText(600),
-            'stock' => fake()->numberBetween(0, 100),
-            'available' => fake()->boolean(50),
-            'published' => fake()->dateTimeThisCentury(),
+            "author_id" => Author::factory(),
+            "publisher_id" => Publisher::factory(),
+            "genre_id" => Genre::factory(),
+            "title" => fake()->name(),
+            "isbn" => fake()->unique()->isbn13(),
+            "price" => fake()->numberBetween(500, 10000), // Price in cents ($5.00 to $100.00)
+            "description" => fake()->realText(600),
+            "stock" => fake()->numberBetween(0, 100),
+            "available" => fake()->boolean(50),
+            "published" => fake()->dateTimeThisCentury(),
         ];
     }
 }

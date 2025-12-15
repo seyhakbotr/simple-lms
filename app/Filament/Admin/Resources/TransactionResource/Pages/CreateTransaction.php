@@ -4,10 +4,13 @@ namespace App\Filament\Admin\Resources\TransactionResource\Pages;
 
 use App\Filament\Admin\Resources\TransactionResource;
 use App\Models\Transaction;
-use App\Models\TransactionItem;
+use App\Models\User;
+use App\Services\TransactionService;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class CreateTransaction extends CreateRecord
 {
@@ -28,27 +31,55 @@ class CreateTransaction extends CreateRecord
         ];
     }
 
-    protected function handleRecordCreation(array $data): Model
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Create the main transaction
-        $transaction = Transaction::create([
-            "user_id" => $data["user_id"],
-            "borrowed_date" => $data["borrowed_date"],
-            "status" => $data["status"],
-            "returned_date" => $data["returned_date"] ?? null,
-        ]);
-
-        // Create transaction items for each book
-        if (isset($data["transactions"]) && is_array($data["transactions"])) {
-            foreach ($data["transactions"] as $itemData) {
-                TransactionItem::create([
-                    "transaction_id" => $transaction->id,
-                    "book_id" => $itemData["book_id"],
-                    "borrowed_for" => $itemData["borrowed_for"],
-                ]);
-            }
+        // Transform the 'transactions' repeater data to 'items' for the service
+        if (isset($data["transactions"])) {
+            $data["items"] = $data["transactions"];
+            unset($data["transactions"]);
         }
 
-        return $transaction;
+        return $data;
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $transactionService = app(TransactionService::class);
+
+        try {
+            $transaction = $transactionService->createTransaction($data);
+
+            // Success notification
+            $user = User::find($transaction->user_id);
+            $itemCount = $transaction->items()->count();
+
+            Notification::make()
+                ->success()
+                ->title("Transaction Created Successfully")
+                ->body(
+                    "Created transaction for {$user->name}. {$itemCount} book(s) borrowed.",
+                )
+                ->send();
+
+            return $transaction;
+        } catch (ValidationException $e) {
+            // Re-throw validation exceptions to show in form
+            throw $e;
+        } catch (\Exception $e) {
+            // Handle any other errors
+            Notification::make()
+                ->danger()
+                ->title("Transaction Creation Failed")
+                ->body($e->getMessage())
+                ->send();
+
+            $this->halt();
+        }
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        // Disable default notification since we're handling it custom
+        return null;
     }
 }

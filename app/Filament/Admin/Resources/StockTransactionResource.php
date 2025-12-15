@@ -83,9 +83,19 @@ class StockTransactionResource extends Resource
                         Select::make("book_id")
                             ->label("Book")
                             ->options(
-                                Book::with("author")
+                                Book::with(["author", "publisher"])
                                     ->get()
-                                    ->pluck("title", "id"),
+                                    ->mapWithKeys(function ($book) {
+                                        return [
+                                            $book->id =>
+                                                $book->title .
+                                                " - " .
+                                                $book->author->name .
+                                                " (ISBN: " .
+                                                $book->isbn .
+                                                ")",
+                                        ];
+                                    }),
                             )
                             ->searchable()
                             ->required()
@@ -98,6 +108,7 @@ class StockTransactionResource extends Resource
                                     $book = Book::find($state);
                                     $set("current_stock", $book?->stock ?? 0);
                                     $set("old_stock", $book?->stock ?? 0);
+                                    $set("isbn_display", $book?->isbn ?? "N/A");
                                 }
                             })
                             ->disableOptionWhen(function (
@@ -110,6 +121,14 @@ class StockTransactionResource extends Resource
                                     ->contains($value);
                             })
                             ->columnSpan(2),
+
+                        TextInput::make("isbn_display")
+                            ->label("ISBN")
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->placeholder("Select a book")
+                            ->suffixIcon("heroicon-o-qr-code")
+                            ->columnSpan(1),
 
                         TextInput::make("current_stock")
                             ->label("Current Stock")
@@ -172,7 +191,7 @@ class StockTransactionResource extends Resource
 
                         TextInput::make("new_stock")->hidden()->dehydrated(),
                     ])
-                    ->columns(5)
+                    ->columns(6)
                     ->defaultItems(1)
                     ->addActionLabel("Add Another Book")
                     ->reorderable(false)

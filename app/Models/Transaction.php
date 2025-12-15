@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BorrowedStatus;
 use App\Observers\TransactionObserver;
+use App\Services\FeeCalculator;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ class Transaction extends Model
 
     protected $fillable = [
         "user_id",
+        "reference_no",
         "borrowed_date",
         "due_date",
         "returned_date",
@@ -61,16 +63,86 @@ class Transaction extends Model
 
     /**
      * Calculate total fine for all items in this transaction
+     * Uses stored fines if transaction is returned, otherwise calculates current overdue
      */
     public function getTotalFineAttribute(): int
     {
         if (!$this->returned_date) {
-            return 0;
+            // For active transactions, calculate current overdue
+            return $this->items->sum(function ($item) {
+                return $item->getCurrentOverdueFine();
+            });
         }
 
-        return $this->items->sum(function ($item) {
-            return $item->calculateFine();
-        });
+        // For returned transactions, use stored fines
+        return $this->items->sum("fine");
+    }
+
+    /**
+     * Update fines for all items in this transaction
+     */
+    public function updateFines(): void
+    {
+        foreach ($this->items as $item) {
+            $item->updateFine();
+        }
+    }
+
+    /**
+     * Get formatted total fine for display
+     */
+    public function getFormattedTotalFineAttribute(): string
+    {
+        $feeCalculator = app(FeeCalculator::class);
+        return $feeCalculator->formatFine($this->total_fine);
+    }
+
+    /**
+     * Get breakdown of all fee types
+     */
+    public function getFeeBreakdownAttribute(): array
+    {
+        $overdueFine = $this->items->sum("overdue_fine");
+        $lostFine = $this->items->sum("lost_fine");
+        $damageFine = $this->items->sum("damage_fine");
+        $total = $overdueFine + $lostFine + $damageFine;
+
+        $feeCalculator = app(FeeCalculator::class);
+
+        return [
+            "overdue" => [
+                "amount" => $overdueFine,
+                "formatted" => $feeCalculator->formatFine($overdueFine),
+            ],
+            "lost" => [
+                "amount" => $lostFine,
+                "formatted" => $feeCalculator->formatFine($lostFine),
+            ],
+            "damage" => [
+                "amount" => $damageFine,
+                "formatted" => $feeCalculator->formatFine($damageFine),
+            ],
+            "total" => [
+                "amount" => $total,
+                "formatted" => $feeCalculator->formatFine($total),
+            ],
+        ];
+    }
+
+    /**
+     * Check if transaction has any lost items
+     */
+    public function hasLostItems(): bool
+    {
+        return $this->items->contains(fn($item) => $item->isLost());
+    }
+
+    /**
+     * Check if transaction has any damaged items
+     */
+    public function hasDamagedItems(): bool
+    {
+        return $this->items->contains(fn($item) => $item->isDamaged());
     }
 
     /**
@@ -154,11 +226,31 @@ class Transaction extends Model
         );
     }
 
+    /**
+     * Generate a unique reference number for the transaction
+     */
+    public static function generateReferenceNo(): string
+    {
+        do {
+            // Format: TXN-YYYYMMDD-XXXX (e.g., TXN-20250115-0001)
+            $date = now()->format("Ymd");
+            $random = str_pad(rand(0, 9999), 4, "0", STR_PAD_LEFT);
+            $referenceNo = "TXN-{$date}-{$random}";
+        } while (self::where("reference_no", $referenceNo)->exists());
+
+        return $referenceNo;
+    }
+
     public static function booted(): void
     {
         parent::boot();
 
         static::creating(function ($transaction) {
+            // Auto-generate reference_no if not set
+            if (!$transaction->reference_no) {
+                $transaction->reference_no = self::generateReferenceNo();
+            }
+
             // Auto-calculate due_date if not set
             if (!$transaction->due_date) {
                 $maxBorrowDays =
@@ -169,24 +261,26 @@ class Transaction extends Model
             }
         });
 
-        static::saving(function ($transaction) {
-            // Calculate and update fines for all items when returned_date is set
+        static::saved(function ($transaction) {
+            // Update fines for all items when returned_date is set or changed
             if (
                 $transaction->returned_date &&
-                $transaction->isDirty("returned_date")
+                $transaction->wasChanged("returned_date")
             ) {
-                // This will be handled after the transaction is saved
-                // We'll use the 'saved' event for items
+                $transaction->updateFines();
             }
-        });
 
-        static::saved(function ($transaction) {
-            // Update fines for all items when returned_date changes
-            if ($transaction->returned_date) {
-                foreach ($transaction->items as $item) {
-                    $fine = $item->calculateFine();
-                    $item->update(["fine" => $fine]);
-                }
+            // Update status to Lost or Damaged if items are marked as such
+            if (
+                $transaction->hasLostItems() &&
+                $transaction->status !== BorrowedStatus::Lost
+            ) {
+                $transaction->update(["status" => BorrowedStatus::Lost]);
+            } elseif (
+                $transaction->hasDamagedItems() &&
+                $transaction->status !== BorrowedStatus::Damaged
+            ) {
+                $transaction->update(["status" => BorrowedStatus::Damaged]);
             }
         });
 

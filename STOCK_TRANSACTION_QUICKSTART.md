@@ -28,8 +28,8 @@ Navigate to **Stock Transactions > Stock Adjustments** in the admin panel
 2. Select adjustment type (applies to all books in this transaction)
 3. Add optional notes (e.g., "Monthly purchase from ABC Books")
 4. **Add Books:**
-   - Select a book from the dropdown
-   - Current stock shows automatically
+   - Select a book from the dropdown (shows title, author, and ISBN)
+   - Book details display automatically: ISBN, Author, Current Stock
    - Enter quantity to adjust
    - Preview new stock
    - Click **"Add Another Book"** to add more books
@@ -50,6 +50,13 @@ Instead of adjusting books one at a time, you can now:
 - Record damage to several books at once
 - Perform monthly inventory counts efficiently
 - Group related adjustments together
+
+### 📖 Enhanced Book Display
+When adding books to a transaction:
+- **Dropdown shows**: Title - Author (ISBN: ###)
+- **Auto-displays**: ISBN, Author, and Current Stock
+- **Easy identification**: Find books by title, author, or ISBN
+- **Copy ISBN**: Click to copy ISBN codes
 
 ### 📋 Reference Numbers
 Every transaction gets a unique reference number:
@@ -223,7 +230,13 @@ Include useful information:
 1. Go to **Books > Books**
 2. Click **Edit** on a book
 3. Click **Stock History** tab
-4. See all adjustments for that book
+4. See all adjustments for that book with:
+   - Reference number
+   - Transaction type
+   - ISBN (copyable)
+   - Quantity adjusted
+   - Old and new stock
+   - Who made the adjustment
 5. Each row shows the transaction it belongs to
 
 ## Database Structure

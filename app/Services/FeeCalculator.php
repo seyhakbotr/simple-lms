@@ -25,7 +25,7 @@ class FeeCalculator
      */
     public function calculateOverdueFine(
         TransactionItem $item,
-        ?Carbon $returnDate = null
+        ?Carbon $returnDate = null,
     ): int {
         if (!$this->feeSettings->overdue_fee_enabled) {
             return 0;
@@ -57,7 +57,10 @@ class FeeCalculator
 
         // Apply maximum days cap if set
         if ($this->feeSettings->overdue_fee_max_days !== null) {
-            $daysLate = min($daysLate, $this->feeSettings->overdue_fee_max_days);
+            $daysLate = min(
+                $daysLate,
+                $this->feeSettings->overdue_fee_max_days,
+            );
         }
 
         // Calculate fine
@@ -89,10 +92,14 @@ class FeeCalculator
     {
         $fine = 0;
 
-        if ($this->feeSettings->lost_book_fine_type === 'percentage') {
+        if ($this->feeSettings->lost_book_fine_type === "percentage") {
             // Calculate based on book price
-            $bookPrice = $book->price ?? 0;
-            $fine = ($bookPrice * $this->feeSettings->lost_book_fine_rate) / 100;
+            // Book price is stored in cents, convert to dollars first
+            $bookPriceInDollars = ($book->price ?? 0) / 100;
+            $fine =
+                ($bookPriceInDollars *
+                    $this->feeSettings->lost_book_fine_rate) /
+                100;
 
             // Apply minimum fine if set
             if (
@@ -141,8 +148,7 @@ class FeeCalculator
     public function formatFine(int $amountInCents): string
     {
         $amount = $amountInCents / 100;
-        return $this->feeSettings->currency_symbol .
-            number_format($amount, 2);
+        return $this->feeSettings->currency_symbol . number_format($amount, 2);
     }
 
     /**
@@ -153,13 +159,13 @@ class FeeCalculator
     public function getFeeSummary(): array
     {
         return [
-            'overdue_enabled' => $this->feeSettings->overdue_fee_enabled,
-            'overdue_per_day' => $this->feeSettings->overdue_fee_per_day,
-            'grace_period' => $this->feeSettings->grace_period_days,
-            'lost_book_type' => $this->feeSettings->lost_book_fine_type,
-            'lost_book_rate' => $this->feeSettings->lost_book_fine_rate,
-            'currency_symbol' => $this->feeSettings->currency_symbol,
-            'currency_code' => $this->feeSettings->currency_code,
+            "overdue_enabled" => $this->feeSettings->overdue_fee_enabled,
+            "overdue_per_day" => $this->feeSettings->overdue_fee_per_day,
+            "grace_period" => $this->feeSettings->grace_period_days,
+            "lost_book_type" => $this->feeSettings->lost_book_fine_type,
+            "lost_book_rate" => $this->feeSettings->lost_book_fine_rate,
+            "currency_symbol" => $this->feeSettings->currency_symbol,
+            "currency_code" => $this->feeSettings->currency_code,
         ];
     }
 
@@ -201,5 +207,71 @@ class FeeCalculator
         }
 
         return $totalFines;
+    }
+
+    /**
+     * Calculate total fine for a transaction
+     *
+     * @param \App\Models\Transaction $transaction
+     * @return int Total fines in cents
+     */
+    public function calculateTransactionTotalFine($transaction): int
+    {
+        if (!$transaction->returned_date) {
+            // For active transactions, calculate current overdue
+            return $transaction->items->sum(function ($item) {
+                return $this->calculateCurrentOverdueFine($item);
+            });
+        }
+
+        // For returned transactions, sum the stored fines
+        return $transaction->items->sum("fine");
+    }
+
+    /**
+     * Update all fines for a transaction's items
+     *
+     * @param \App\Models\Transaction $transaction
+     * @return void
+     */
+    public function updateTransactionFines($transaction): void
+    {
+        foreach ($transaction->items as $item) {
+            $fine = $this->calculateOverdueFine($item);
+            $item->update(["fine" => $fine]);
+        }
+    }
+
+    /**
+     * Get detailed fee breakdown for a transaction
+     *
+     * @param \App\Models\Transaction $transaction
+     * @return array
+     */
+    public function getTransactionFeeBreakdown($transaction): array
+    {
+        $breakdown = [
+            "items" => [],
+            "total" => 0,
+            "currency_symbol" => $this->feeSettings->currency_symbol,
+        ];
+
+        foreach ($transaction->items as $item) {
+            $fine = $transaction->returned_date
+                ? $item->fine ?? 0
+                : $this->calculateCurrentOverdueFine($item);
+
+            $breakdown["items"][] = [
+                "book_title" => $item->book->title ?? "Unknown",
+                "fine" => $fine,
+                "formatted_fine" => $this->formatFine($fine),
+            ];
+
+            $breakdown["total"] += $fine;
+        }
+
+        $breakdown["formatted_total"] = $this->formatFine($breakdown["total"]);
+
+        return $breakdown;
     }
 }

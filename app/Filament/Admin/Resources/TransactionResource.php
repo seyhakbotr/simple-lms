@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
+use App\Services\FeeCalculator;
 use App\Settings\FeeSettings;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
@@ -83,7 +84,42 @@ class TransactionResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->label("Borrower")
-                                    ->required(),
+                                    ->required()
+                                    ->live()
+                                    ->helperText(function (Get $get) {
+                                        if (!$get("user_id")) {
+                                            return null;
+                                        }
+
+                                        $user = User::with(
+                                            "membershipType",
+                                        )->find($get("user_id"));
+                                        if (!$user || !$user->membershipType) {
+                                            return "User has no membership type assigned";
+                                        }
+
+                                        $current = $user->getCurrentBorrowedBooksCount();
+                                        $max =
+                                            $user->membershipType
+                                                ->max_books_allowed;
+                                        $remaining = $max - $current;
+
+                                        if ($remaining <= 0) {
+                                            return "⚠️ User has reached borrowing limit (" .
+                                                $current .
+                                                "/" .
+                                                $max .
+                                                ")";
+                                        }
+
+                                        return "✓ Can borrow " .
+                                            $remaining .
+                                            " more book(s) (Currently: " .
+                                            $current .
+                                            "/" .
+                                            $max .
+                                            ")";
+                                    }),
 
                                 DatePicker::make("borrowed_date")
                                     ->live()
@@ -94,6 +130,26 @@ class TransactionResource extends Resource
                                 Repeater::make("transactions") // This name is used in CreateTransaction.php
                                     ->label("Books to Borrow")
                                     ->hiddenOn("edit") // Hide the repeater when editing a single transaction
+                                    ->maxItems(function (Get $get) {
+                                        if (!$get("user_id")) {
+                                            return 1;
+                                        }
+
+                                        $user = User::with(
+                                            "membershipType",
+                                        )->find($get("user_id"));
+                                        if (!$user || !$user->membershipType) {
+                                            return 1;
+                                        }
+
+                                        $current = $user->getCurrentBorrowedBooksCount();
+                                        $max =
+                                            $user->membershipType
+                                                ->max_books_allowed;
+                                        $remaining = $max - $current;
+
+                                        return max(1, $remaining);
+                                    })
                                     ->schema([
                                         Select::make("book_id") // Book ID for the individual transaction
                                             ->options(
@@ -113,8 +169,69 @@ class TransactionResource extends Resource
                                             ->suffix("Days")
                                             ->numeric()
                                             ->live()
-                                            ->minValue(0)
-                                            ->maxValue(30)
+                                            ->minValue(1)
+                                            ->maxValue(function (Get $get) {
+                                                $userId = $get("../../user_id");
+                                                if (!$userId) {
+                                                    return 30;
+                                                }
+
+                                                $user = User::with(
+                                                    "membershipType",
+                                                )->find($userId);
+                                                if (
+                                                    !$user ||
+                                                    !$user->membershipType
+                                                ) {
+                                                    return 30;
+                                                }
+
+                                                return $user
+                                                    ->membershipType->max_borrow_days;
+                                            })
+                                            ->default(function (Get $get) {
+                                                $userId = $get("../../user_id");
+                                                if (!$userId) {
+                                                    return 14;
+                                                }
+
+                                                $user = User::with(
+                                                    "membershipType",
+                                                )->find($userId);
+                                                if (
+                                                    !$user ||
+                                                    !$user->membershipType
+                                                ) {
+                                                    return 14;
+                                                }
+
+                                                return $user
+                                                    ->membershipType->max_borrow_days;
+                                            })
+                                            ->helperText(function (Get $get) {
+                                                $userId = $get("../../user_id");
+                                                if (!$userId) {
+                                                    return null;
+                                                }
+
+                                                $user = User::with(
+                                                    "membershipType",
+                                                )->find($userId);
+                                                if (
+                                                    !$user ||
+                                                    !$user->membershipType
+                                                ) {
+                                                    return null;
+                                                }
+
+                                                return "Max: " .
+                                                    $user->membershipType
+                                                        ->max_borrow_days .
+                                                    " days for " .
+                                                    $user->membershipType
+                                                        ->name .
+                                                    " membership";
+                                            })
                                             ->required(),
                                     ])
                                     ->defaultItems(1)
@@ -162,11 +279,7 @@ class TransactionResource extends Resource
                                             ->label("Fine")
                                             ->content(
                                                 fn($record) => $record
-                                                    ? '$' .
-                                                        number_format(
-                                                            $record->fine ?? 0,
-                                                            2,
-                                                        )
+                                                    ? $record->formatted_fine
                                                     : "N/A",
                                             ),
                                     ])
@@ -182,7 +295,9 @@ class TransactionResource extends Resource
                                             string $operation,
                                         ): bool => $operation === "edit" &&
                                             ($get("status") === "returned" ||
-                                                $get("status") === "delayed"),
+                                                $get("status") === "delayed" ||
+                                                $get("status") === "lost" ||
+                                                $get("status") === "damaged"),
                                     )
                                     ->afterOrEqual("borrowed_date")
                                     ->live()
@@ -190,13 +305,68 @@ class TransactionResource extends Resource
                                         $state,
                                         $set,
                                         $get,
+                                        $record,
                                     ) {
-                                        // This will trigger fine recalculation when returned_date changes
+                                        // Real-time fine calculation preview
+                                        if (!$state || !$record) {
+                                            return;
+                                        }
+
+                                        $feeCalculator = app(
+                                            \App\Services\FeeCalculator::class,
+                                        );
+                                        $totalFine = 0;
+
+                                        // Calculate preview fine for each item
+                                        foreach ($record->items as $item) {
+                                            $fine = $feeCalculator->calculateOverdueFine(
+                                                $item,
+                                                \Illuminate\Support\Carbon::parse(
+                                                    $state,
+                                                ),
+                                            );
+                                            $totalFine += $fine;
+                                        }
+
+                                        // Store preview in a hidden field or state
+                                        $set("fine_preview", $totalFine);
                                     })
                                     ->required(
                                         fn(string $context) => $context ===
                                             "edit",
                                     )
+                                    ->helperText(function (Get $get, $record) {
+                                        if (
+                                            !$get("returned_date") ||
+                                            !$record
+                                        ) {
+                                            return null;
+                                        }
+
+                                        $feeCalculator = app(
+                                            \App\Services\FeeCalculator::class,
+                                        );
+                                        $totalFine = 0;
+
+                                        foreach ($record->items as $item) {
+                                            $fine = $feeCalculator->calculateOverdueFine(
+                                                $item,
+                                                \Illuminate\Support\Carbon::parse(
+                                                    $get("returned_date"),
+                                                ),
+                                            );
+                                            $totalFine += $fine;
+                                        }
+
+                                        if ($totalFine > 0) {
+                                            return "💰 Estimated fine: " .
+                                                $feeCalculator->formatFine(
+                                                    $totalFine,
+                                                );
+                                        }
+
+                                        return "✓ No fine - returned on time";
+                                    })
                                     ->columnSpanFull(),
                             ])
                             ->columns(2),
@@ -222,70 +392,203 @@ class TransactionResource extends Resource
                                 ->live(),
                             Group::make()
                                 ->schema([
+                                    Placeholder::make("fine_breakdown")
+                                        ->label("Fee Breakdown")
+                                        ->content(function (
+                                            Get $get,
+                                            $record,
+                                        ): string {
+                                            if (!$record) {
+                                                return "N/A";
+                                            }
+
+                                            $feeCalculator = app(
+                                                \App\Services\FeeCalculator::class,
+                                            );
+                                            $breakdown = [];
+
+                                            // Calculate fees based on returned_date (real-time or stored)
+                                            $returnDate = $get("returned_date")
+                                                ? \Illuminate\Support\Carbon::parse(
+                                                    $get("returned_date"),
+                                                )
+                                                : $record->returned_date;
+
+                                            if (!$returnDate) {
+                                                // For active transactions, show current overdue if any
+                                                if ($record->isOverdue()) {
+                                                    $currentFine = 0;
+                                                    foreach (
+                                                        $record->items
+                                                        as $item
+                                                    ) {
+                                                        $currentFine += $feeCalculator->calculateCurrentOverdueFine(
+                                                            $item,
+                                                        );
+                                                    }
+                                                    if ($currentFine > 0) {
+                                                        return "⚠️ Current Overdue: " .
+                                                            $feeCalculator->formatFine(
+                                                                $currentFine,
+                                                            ) .
+                                                            " (" .
+                                                            $record->getDaysOverdue() .
+                                                            " days late)";
+                                                    }
+                                                }
+                                                return "No fines yet";
+                                            }
+
+                                            // Calculate overdue fines
+                                            $overdueFine = 0;
+                                            foreach ($record->items as $item) {
+                                                $overdueFine += $feeCalculator->calculateOverdueFine(
+                                                    $item,
+                                                    $returnDate,
+                                                );
+                                            }
+
+                                            if ($overdueFine > 0) {
+                                                $breakdown[] =
+                                                    "Overdue: " .
+                                                    $feeCalculator->formatFine(
+                                                        $overdueFine,
+                                                    );
+                                            }
+
+                                            // Lost book fees
+                                            $lostFine = $record->items->sum(
+                                                "lost_fine",
+                                            );
+                                            if ($lostFine > 0) {
+                                                $breakdown[] =
+                                                    "Lost Books: " .
+                                                    $feeCalculator->formatFine(
+                                                        $lostFine,
+                                                    );
+                                            }
+
+                                            // Damage fees
+                                            $damageFine = $record->items->sum(
+                                                "damage_fine",
+                                            );
+                                            if ($damageFine > 0) {
+                                                $breakdown[] =
+                                                    "Damage: " .
+                                                    $feeCalculator->formatFine(
+                                                        $damageFine,
+                                                    );
+                                            }
+
+                                            if (empty($breakdown)) {
+                                                return "✓ No fines";
+                                            }
+
+                                            $total =
+                                                $overdueFine +
+                                                $lostFine +
+                                                $damageFine;
+                                            $breakdown[] =
+                                                "**Total: " .
+                                                $feeCalculator->formatFine(
+                                                    $total,
+                                                ) .
+                                                "**";
+
+                                            return implode("\n", $breakdown);
+                                        })
+                                        ->live()
+                                        ->visible(
+                                            fn(Get $get, $record) => $record &&
+                                                ($get("status") === "delayed" ||
+                                                    $get("status") ===
+                                                        "returned" ||
+                                                    $get("status") === "lost" ||
+                                                    $get("status") ===
+                                                        "damaged" ||
+                                                    $get("returned_date")),
+                                        ),
+
                                     Placeholder::make("fine")
                                         ->label(function (): string {
-                                            $feeSettings = app(
-                                                FeeSettings::class,
+                                            $feeCalculator = app(
+                                                FeeCalculator::class,
                                             );
+                                            $feeSummary = $feeCalculator->getFeeSummary();
+
                                             if (
-                                                !$feeSettings->overdue_fee_enabled
+                                                !$feeSummary["overdue_enabled"]
                                             ) {
                                                 return "Overdue Fees (Disabled)";
                                             }
+
                                             $feeLabel =
-                                                $feeSettings->currency_symbol .
+                                                $feeSummary["currency_symbol"] .
                                                 number_format(
-                                                    $feeSettings->overdue_fee_per_day,
+                                                    $feeSummary[
+                                                        "overdue_per_day"
+                                                    ],
                                                     2,
                                                 ) .
                                                 " Per Day";
+
                                             if (
-                                                $feeSettings->grace_period_days >
-                                                0
+                                                $feeSummary["grace_period"] > 0
                                             ) {
                                                 $feeLabel .=
                                                     " (After " .
-                                                    $feeSettings->grace_period_days .
+                                                    $feeSummary[
+                                                        "grace_period"
+                                                    ] .
                                                     " Day Grace Period)";
                                             }
+
                                             return $feeLabel;
                                         })
                                         ->content(function (
                                             Get $get,
                                             $record,
                                         ): string {
-                                            // Guard against null record or missing returned_date
                                             if (!$record) {
                                                 return "N/A";
                                             }
 
-                                            if (!$record->returned_date) {
-                                                return "N/A";
+                                            // For delayed (overdue but not returned): show current overdue
+                                            if (
+                                                !$record->returned_date &&
+                                                $record->isOverdue()
+                                            ) {
+                                                $totalFine =
+                                                    $record->total_fine ?? 0;
+
+                                                if ($totalFine > 0) {
+                                                    return "Current Overdue: " .
+                                                        $record->formatted_total_fine .
+                                                        " (" .
+                                                        $record->getDaysOverdue() .
+                                                        " days late)";
+                                                }
+
+                                                return "No fine (within grace period)";
                                             }
 
-                                            $totalFine =
-                                                $record->total_fine ?? 0;
+                                            // For returned transactions: show final fine
+                                            if ($record->returned_date) {
+                                                $totalFine =
+                                                    $record->total_fine ?? 0;
 
-                                            if ($totalFine > 0) {
-                                                $feeSettings = app(
-                                                    FeeSettings::class,
-                                                );
-                                                return "Total: " .
-                                                    $feeSettings->currency_symbol .
-                                                    number_format(
-                                                        $totalFine / 100,
-                                                        2,
-                                                    );
+                                                if ($totalFine > 0) {
+                                                    return "Total: " .
+                                                        $record->formatted_total_fine;
+                                                }
+
+                                                return "No fine";
                                             }
 
-                                            return "No fine";
+                                            return "No fine yet";
                                         })
                                         ->live()
-                                        ->visible(
-                                            fn(Get $get, $record) => $record &&
-                                                $get("returned_date") &&
-                                                $get("status") === "delayed",
-                                        ),
+                                        ->visible(fn() => false), // Hidden, replaced by fee_breakdown
                                 ])
                                 ->visibleOn("edit"),
                         ]),
@@ -322,10 +625,9 @@ class TransactionResource extends Resource
                 TextColumn::make("status")->badge()->sortable(),
                 TextColumn::make("total_fine")
                     ->label("Total Fine")
-                    ->money("usd")
                     ->getStateUsing(
-                        fn($record) => ($record->total_fine ?? 0) / 100,
-                    ) // Convert cents to dollars
+                        fn($record) => $record->formatted_total_fine,
+                    )
                     ->placeholder('$0.00'),
             ])
             ->filters([
