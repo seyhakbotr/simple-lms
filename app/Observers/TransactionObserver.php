@@ -13,8 +13,8 @@ class TransactionObserver
 
     public function __construct()
     {
-        $this->admin = User::with('role')
-            ->whereRelation('role', 'name', 'admin')
+        $this->admin = User::with("role")
+            ->whereRelation("role", "name", "admin")
             ->first();
     }
 
@@ -23,9 +23,12 @@ class TransactionObserver
      */
     public function created(Transaction $transaction): void
     {
+        $bookCount = $transaction->items()->count();
+        $bookText = $bookCount === 1 ? "a book" : $bookCount . " books";
+
         Notification::make()
-            ->title($transaction->user->name.' Borrowed a book')
-            ->icon('heroicon-o-user')
+            ->title($transaction->user->name . " Borrowed " . $bookText)
+            ->icon("heroicon-o-user")
             ->info()
             ->sendToDatabase($this->admin);
     }
@@ -35,22 +38,42 @@ class TransactionObserver
      */
     public function updated(Transaction $transaction): void
     {
-        if (auth()->user()->role->name == 'staff' && $transaction->status == BorrowedStatus::Returned) {
+        $bookCount = $transaction->items()->count();
+        $bookText = $bookCount === 1 ? "a book" : $bookCount . " books";
+
+        if (
+            auth()->user()->role->name == "staff" &&
+            $transaction->status == BorrowedStatus::Returned
+        ) {
             Notification::make()
-                ->title('A Borrower Returned a book')
-                ->body($transaction->user->name.' returned a book on time')
-                ->icon('heroicon-o-user')
+                ->title("A Borrower Returned " . $bookText)
+                ->body(
+                    $transaction->user->name .
+                        " returned " .
+                        $bookText .
+                        " on time",
+                )
+                ->icon("heroicon-o-user")
                 ->success()
                 ->sendToDatabase($this->admin);
         }
 
-        if (auth()->user()->role->name == 'staff' && $transaction->status == BorrowedStatus::Delayed) {
+        if (
+            auth()->user()->role->name == "staff" &&
+            $transaction->status == BorrowedStatus::Delayed
+        ) {
+            $totalFine = $transaction->total_fine;
+
             Notification::make()
-                ->title('A Borrower Delayed to return a book')
+                ->title("A Borrower Delayed to return " . $bookText)
                 ->body(
-                    $transaction->user->name.' delayed to return a book, and had to pay a fine of $'.$transaction->fine
+                    $transaction->user->name .
+                        " delayed to return " .
+                        $bookText .
+                        ', and had to pay a total fine of $' .
+                        number_format($totalFine, 2),
                 )
-                ->icon('heroicon-o-user')
+                ->icon("heroicon-o-user")
                 ->danger()
                 ->sendToDatabase($this->admin);
         }

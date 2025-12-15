@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\BorrowedStatus;
 use App\Models\Book;
+use App\Models\TransactionItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
@@ -20,39 +21,103 @@ class TransactionFactory extends Factory
      */
     public function definition(): array
     {
+        $borrowedDate = fake()->dateTimeBetween("-30 days", "now");
+        $hasReturned = fake()->boolean(70); // 70% chance of being returned
+
         return [
-            'book_id' => Book::factory(),
-            'user_id' => User::factory(),
-            'borrowed_date' => now(),
-            'borrowed_for' => fake()->numberBetween(1, 30),
-            'returned_date' => function (array $attributes) {
-                $isNull = fake()->boolean(30);
-
-                if ($isNull) {
-
-                    return null;
-                } elseif ($attributes['borrowed_for'] >= 1) {
-                    $borrowedDate = Carbon::parse($attributes['borrowed_date']);
-                    $borrowedFor = $attributes['borrowed_for'];
-
-                    $maxReturnDate = $borrowedDate->copy()->addDays($borrowedFor - 1);
-                    $returnedDate = Carbon::parse(fake()->dateTimeBetween($borrowedDate, $maxReturnDate));
-
-                    return $returnedDate;
-                }
-            },
-            'status' => function (array $attributes) {
-                $returnedDate = $attributes['returned_date'];
-
-                if ($returnedDate === null) {
-                    return BorrowedStatus::Borrowed;
-                } elseif (Carbon::parse($returnedDate)->isPast()) {
-                    return BorrowedStatus::Delayed;
-                } else {
-                    return BorrowedStatus::Returned;
-                }
-            },
-            'fine' => null,
+            "user_id" => User::factory(),
+            "borrowed_date" => $borrowedDate,
+            "returned_date" => $hasReturned
+                ? fake()->dateTimeBetween($borrowedDate, "now")
+                : null,
+            "status" => $hasReturned
+                ? fake()->randomElement([
+                    BorrowedStatus::Returned,
+                    BorrowedStatus::Delayed,
+                ])
+                : BorrowedStatus::Borrowed,
         ];
+    }
+
+    /**
+     * Configure the model factory.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function ($transaction) {
+            // Create 1-3 transaction items (books) for each transaction
+            $itemCount = fake()->numberBetween(1, 3);
+
+            // Get random books
+            $books = Book::inRandomOrder()->limit($itemCount)->get();
+
+            foreach ($books as $book) {
+                $borrowedFor = fake()->numberBetween(7, 30);
+
+                TransactionItem::create([
+                    "transaction_id" => $transaction->id,
+                    "book_id" => $book->id,
+                    "borrowed_for" => $borrowedFor,
+                ]);
+            }
+
+            // Calculate fines for all items after creation if transaction is returned
+            if ($transaction->returned_date) {
+                $transaction->refresh();
+                foreach ($transaction->items as $item) {
+                    $fine = $item->calculateFine();
+                    if ($fine > 0) {
+                        $item->update(["fine" => $fine]);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Indicate that the transaction is currently borrowed (not returned).
+     */
+    public function borrowed(): static
+    {
+        return $this->state(
+            fn(array $attributes) => [
+                "returned_date" => null,
+                "status" => BorrowedStatus::Borrowed,
+            ],
+        );
+    }
+
+    /**
+     * Indicate that the transaction has been returned on time.
+     */
+    public function returned(): static
+    {
+        return $this->state(function (array $attributes) {
+            $borrowedDate = Carbon::parse($attributes["borrowed_date"]);
+
+            return [
+                "returned_date" => $borrowedDate
+                    ->copy()
+                    ->addDays(fake()->numberBetween(1, 14)),
+                "status" => BorrowedStatus::Returned,
+            ];
+        });
+    }
+
+    /**
+     * Indicate that the transaction has been returned late (with fine).
+     */
+    public function delayed(): static
+    {
+        return $this->state(function (array $attributes) {
+            $borrowedDate = Carbon::parse($attributes["borrowed_date"]);
+
+            return [
+                "returned_date" => $borrowedDate
+                    ->copy()
+                    ->addDays(fake()->numberBetween(15, 45)),
+                "status" => BorrowedStatus::Delayed,
+            ];
+        });
     }
 }
