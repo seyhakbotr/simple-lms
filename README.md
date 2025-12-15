@@ -24,6 +24,7 @@ This is a project designed to manage and maintain the records of books in a libr
 - **User Management**: Manage user accounts including creating new users, updating user information, and deleting users.
 - **Borrowing and Returning Books**: Users can borrow and return books, and the system keeps track of all transactions.
 - **Permission Based Role**: Roles such as Staff can create borrowers but cant remove them unless admin decides to.
+- **Fee Management**: Comprehensive fee configuration system for overdue books and lost items with flexible payment options, grace periods, and customizable fine structures.
 
 ## Getting Started
 

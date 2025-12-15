@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
+use App\Settings\FeeSettings;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
@@ -119,7 +120,8 @@ class TransactionResource extends Resource
                                     ->columns(2)
                                     ->columnSpanFull()
                                     ->itemLabel(
-                                        fn(array $state): ?string => isset( // Display the book title as the label for each repeater item
+                                        fn(array $state): ?string => isset(
+                                            // Display the book title as the label for each repeater item
                                             $state["book_id"],
                                         )
                                             ? Book::find($state["book_id"])
@@ -213,7 +215,33 @@ class TransactionResource extends Resource
                             Group::make()
                                 ->schema([
                                     Placeholder::make("fine")
-                                        ->label('$10 Per Day After Delay')
+                                        ->label(function (): string {
+                                            $feeSettings = app(
+                                                FeeSettings::class,
+                                            );
+                                            if (
+                                                !$feeSettings->overdue_fee_enabled
+                                            ) {
+                                                return "Overdue Fees (Disabled)";
+                                            }
+                                            $feeLabel =
+                                                $feeSettings->currency_symbol .
+                                                number_format(
+                                                    $feeSettings->overdue_fee_per_day,
+                                                    2,
+                                                ) .
+                                                " Per Day";
+                                            if (
+                                                $feeSettings->grace_period_days >
+                                                0
+                                            ) {
+                                                $feeLabel .=
+                                                    " (After " .
+                                                    $feeSettings->grace_period_days .
+                                                    " Day Grace Period)";
+                                            }
+                                            return $feeLabel;
+                                        })
                                         ->content(function (
                                             Get $get,
                                             $record,
@@ -231,9 +259,13 @@ class TransactionResource extends Resource
                                                 $record->total_fine ?? 0;
 
                                             if ($totalFine > 0) {
-                                                return 'Total: $' .
+                                                $feeSettings = app(
+                                                    FeeSettings::class,
+                                                );
+                                                return "Total: " .
+                                                    $feeSettings->currency_symbol .
                                                     number_format(
-                                                        $totalFine,
+                                                        $totalFine / 100,
                                                         2,
                                                     );
                                             }
