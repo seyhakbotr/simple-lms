@@ -21,6 +21,8 @@ class TransactionItem extends Model
         "borrowed_for",
         "fine", // Legacy - for backward compatibility
         "item_status",
+        "lifecycle_status",
+        "returned_date",
         "overdue_fine",
         "lost_fine",
         "damage_fine",
@@ -30,6 +32,7 @@ class TransactionItem extends Model
 
     protected $casts = [
         "borrowed_for" => "integer",
+        "returned_date" => "date",
         "fine" => MoneyCast::class, // Legacy - stores as cents, works as dollars
         "overdue_fine" => MoneyCast::class, // Stores as cents, works as dollars
         "lost_fine" => MoneyCast::class, // Stores as cents, works as dollars
@@ -234,6 +237,7 @@ class TransactionItem extends Model
     {
         $this->update([
             "item_status" => "lost",
+            "lifecycle_status" => "lost",
             "lost_fine" => $this->calculateLostBookFine(),
         ]);
         $this->updateFines();
@@ -248,9 +252,40 @@ class TransactionItem extends Model
     ): void {
         $this->update([
             "item_status" => "damaged",
+            "lifecycle_status" => "returned", // Damaged items are still returned
+            "returned_date" => $this->returned_date ?? now(),
             "damage_fine" => $damageFineAmount,
             "damage_notes" => $notes,
         ]);
         $this->updateFines();
+    }
+
+    /**
+     * Mark item as returned
+     */
+    public function markAsReturned(?Carbon $returnDate = null): void
+    {
+        $this->update([
+            "item_status" => "returned",
+            "lifecycle_status" => "returned",
+            "returned_date" => $returnDate ?? now(),
+        ]);
+        $this->updateFines();
+    }
+
+    /**
+     * Check if item is returned (either normally or damaged)
+     */
+    public function isReturned(): bool
+    {
+        return $this->lifecycle_status === "returned";
+    }
+
+    /**
+     * Check if item is still active (not returned or lost)
+     */
+    public function isActive(): bool
+    {
+        return $this->lifecycle_status === "active";
     }
 }

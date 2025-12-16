@@ -3,6 +3,7 @@
 namespace App\Filament\Staff\Resources;
 
 use App\Enums\BorrowedStatus;
+use App\Enums\LifecycleStatus;
 use App\Filament\Staff\Resources\TransactionResource\Pages;
 use App\Http\Traits\NavigationCount;
 use App\Models\Book;
@@ -47,7 +48,8 @@ class TransactionResource extends Resource
         return [
             "Borrower" => $record->user->name,
             "Books Borrowed" => $bookTitles,
-            "Status" => $record->status,
+            "Lifecycle" => $record->lifecycle_status?->getLabel() ?? "N/A",
+            "Status" => $record->status?->getLabel() ?? "N/A",
         ];
     }
 
@@ -310,13 +312,40 @@ class TransactionResource extends Resource
                                     ) ?? "Not yet returned",
                                 ),
 
-                            Placeholder::make("status")
-                                ->label("Status")
-                                ->content(
-                                    fn(
-                                        $record,
-                                    ) => $record?->status?->getLabel() ?? "N/A",
-                                ),
+                            Placeholder::make("lifecycle_status")
+                                ->label("Lifecycle Status")
+                                ->content(function ($record) {
+                                    if (
+                                        !$record ||
+                                        !$record->lifecycle_status
+                                    ) {
+                                        return "N/A";
+                                    }
+
+                                    $lifecycleColor = match (
+                                        $record->lifecycle_status->value
+                                    ) {
+                                        "active"
+                                            => "text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400",
+                                        "completed"
+                                            => "text-green-700 bg-green-50 dark:bg-green-500/10 dark:text-green-400",
+                                        "cancelled"
+                                            => "text-gray-700 bg-gray-50 dark:bg-gray-500/10 dark:text-gray-400",
+                                        "archived"
+                                            => "text-purple-700 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400",
+                                        default => "text-gray-700 bg-gray-50",
+                                    };
+
+                                    $lifecycleLabel = $record->lifecycle_status->getLabel();
+                                    $lifecycleBadge =
+                                        '<span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ' .
+                                        $lifecycleColor .
+                                        '">' .
+                                        $lifecycleLabel .
+                                        "</span>";
+
+                                    return new HtmlString($lifecycleBadge);
+                                }),
 
                             Placeholder::make("renewed_count")
                                 ->label("Times Renewed")
@@ -357,8 +386,43 @@ class TransactionResource extends Resource
                                                 "M d, Y",
                                             ) ?? "N/A",
                                         ),
+
+                                    Placeholder::make("item_status")
+                                        ->label("Condition")
+                                        ->content(function ($record) {
+                                            if (
+                                                !$record ||
+                                                !$record->item_status
+                                            ) {
+                                                return "N/A";
+                                            }
+
+                                            $statusColor = match (
+                                                $record->item_status
+                                            ) {
+                                                "returned"
+                                                    => "text-green-700 bg-green-50 dark:bg-green-500/10 dark:text-green-400",
+                                                "borrowed"
+                                                    => "text-blue-700 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400",
+                                                "lost"
+                                                    => "text-red-700 bg-red-50 dark:bg-red-500/10 dark:text-red-400",
+                                                "damaged"
+                                                    => "text-orange-700 bg-orange-50 dark:bg-orange-500/10 dark:text-orange-400",
+                                                default
+                                                    => "text-gray-700 bg-gray-50",
+                                            };
+
+                                            $badge =
+                                                '<span class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ' .
+                                                $statusColor .
+                                                '">' .
+                                                ucfirst($record->item_status) .
+                                                "</span>";
+
+                                            return new HtmlString($badge);
+                                        }),
                                 ])
-                                ->columns(3)
+                                ->columns(4)
                                 ->addable(false)
                                 ->deletable(false)
                                 ->reorderable(false),
@@ -439,7 +503,18 @@ class TransactionResource extends Resource
                     ->date("d M, Y")
                     ->sortable()
                     ->placeholder("Not returned"),
-                TextColumn::make("status")->badge()->sortable(),
+                TextColumn::make("lifecycle_status")
+                    ->label("Lifecycle")
+                    ->badge()
+                    ->sortable(),
+                TextColumn::make("status")
+                    ->label("Condition")
+                    ->badge()
+                    ->sortable()
+                    ->visible(
+                        fn($record) => $record && $record->status !== null,
+                    )
+                    ->placeholder("N/A"),
                 TextColumn::make("total_fine")
                     ->label("Total Fine")
                     ->getStateUsing(
@@ -448,9 +523,12 @@ class TransactionResource extends Resource
                     ->placeholder('$0.00'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make("status")->options(
-                    BorrowedStatus::class,
-                ),
+                Tables\Filters\SelectFilter::make("lifecycle_status")
+                    ->label("Lifecycle Status")
+                    ->options(LifecycleStatus::class),
+                Tables\Filters\SelectFilter::make("status")
+                    ->label("Condition Status")
+                    ->options(BorrowedStatus::class),
                 Tables\Filters\Filter::make("overdue")
                     ->label("Overdue Only")
                     ->query(

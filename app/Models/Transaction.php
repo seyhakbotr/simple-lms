@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BorrowedStatus;
+use App\Enums\LifecycleStatus;
 use App\Observers\TransactionObserver;
 use App\Services\FeeCalculator;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -27,10 +28,12 @@ class Transaction extends Model
         "returned_date",
         "renewed_count",
         "status",
+        "lifecycle_status",
     ];
 
     protected $casts = [
         "status" => BorrowedStatus::class,
+        "lifecycle_status" => LifecycleStatus::class,
         "borrowed_date" => "date",
         "due_date" => "date",
         "returned_date" => "date",
@@ -155,6 +158,121 @@ class Transaction extends Model
     }
 
     /**
+     * Check if all items in transaction are returned
+     */
+    public function allItemsReturned(): bool
+    {
+        return $this->items->every(
+            fn($item) => $item->lifecycle_status === "returned",
+        );
+    }
+
+    /**
+     * Check if transaction has mixed status (some returned, some lost)
+     */
+    public function hasMixedStatus(): bool
+    {
+        $statuses = $this->items->pluck("lifecycle_status")->unique();
+        return $statuses->count() > 1;
+    }
+
+    /**
+     * Get count of items by lifecycle status
+     */
+    public function getItemStatusCounts(): array
+    {
+        return [
+            "active" => $this->items
+                ->where("lifecycle_status", "active")
+                ->count(),
+            "returned" => $this->items
+                ->where("lifecycle_status", "returned")
+                ->count(),
+            "lost" => $this->items->where("lifecycle_status", "lost")->count(),
+        ];
+    }
+
+    /**
+     * Update transaction lifecycle status based on items
+     */
+    public function updateLifecycleStatus(): void
+    {
+        $counts = $this->getItemStatusCounts();
+
+        // All items lost
+        if (
+            $counts["lost"] > 0 &&
+            $counts["active"] === 0 &&
+            $counts["returned"] === 0
+        ) {
+            $this->lifecycle_status = LifecycleStatus::Completed;
+        }
+        // All items returned
+        elseif (
+            $counts["returned"] > 0 &&
+            $counts["active"] === 0 &&
+            $counts["lost"] === 0
+        ) {
+            $this->lifecycle_status = LifecycleStatus::Completed;
+        }
+        // Mix of returned and lost (partial completion)
+        elseif (
+            $counts["active"] === 0 &&
+            ($counts["returned"] > 0 || $counts["lost"] > 0)
+        ) {
+            $this->lifecycle_status = LifecycleStatus::Completed;
+        }
+        // Still has active items
+        elseif ($counts["active"] > 0) {
+            $this->lifecycle_status = LifecycleStatus::Active;
+        }
+
+        $this->save();
+    }
+
+    /**
+     * Check if transaction is active
+     */
+    public function isActive(): bool
+    {
+        return $this->lifecycle_status === LifecycleStatus::Active;
+    }
+
+    /**
+     * Check if transaction is completed
+     */
+    public function isCompleted(): bool
+    {
+        return $this->lifecycle_status?->isCompleted() ?? false;
+    }
+
+    /**
+     * Scope query to active transactions
+     */
+    public function scopeActive($query)
+    {
+        return $query->where("lifecycle_status", LifecycleStatus::Active);
+    }
+
+    /**
+     * Scope query to completed transactions
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where("lifecycle_status", LifecycleStatus::Completed);
+    }
+
+    /**
+     * Scope query to overdue active transactions
+     */
+    public function scopeOverdue($query)
+    {
+        return $query
+            ->where("lifecycle_status", LifecycleStatus::Active)
+            ->where("due_date", "<", now());
+    }
+
+    /**
      * Check if transaction is overdue
      */
     public function isOverdue(): bool
@@ -268,11 +386,21 @@ class Transaction extends Model
                     $transaction->borrowed_date,
                 )->addDays($maxBorrowDays);
             }
+
+            // Set default lifecycle status
+            if (!$transaction->lifecycle_status) {
+                $transaction->lifecycle_status = LifecycleStatus::Active;
+            }
         });
 
         static::saved(function ($transaction) {
             // Don't auto-update fines - TransactionService handles this properly
             // Removing this prevents overwriting fees with zeros after they're set
+
+            // Skip lifecycle update during initial creation
+            if ($transaction->wasRecentlyCreated) {
+                return;
+            }
 
             // Update status to Lost or Damaged if items are marked as such
             if (

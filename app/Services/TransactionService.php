@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BorrowedStatus;
+use App\Enums\LifecycleStatus;
 use App\Models\Book;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
@@ -57,6 +58,7 @@ class TransactionService
                 "due_date" => $dueDate,
                 "status" => BorrowedStatus::Borrowed,
                 "renewed_count" => 0,
+                "lifecycle_status" => LifecycleStatus::Active,
             ]);
 
             // Add books to transaction
@@ -90,6 +92,13 @@ class TransactionService
         Transaction $transaction,
         array $data = [],
     ): Transaction {
+        // Validate lifecycle status
+        if (!$transaction->isActive()) {
+            throw ValidationException::withMessages([
+                "transaction" => "Cannot return a completed transaction.",
+            ]);
+        }
+
         if ($transaction->returned_date) {
             throw ValidationException::withMessages([
                 "transaction" => "This transaction has already been returned.",
@@ -107,11 +116,20 @@ class TransactionService
         ) {
             // Process each item
             foreach ($transaction->items as $item) {
+                // Skip items that are already returned or lost
+                if ($item->lifecycle_status !== "active") {
+                    \Log::info(
+                        "Skipping item #{$item->id} - already {$item->lifecycle_status}",
+                    );
+                    continue;
+                }
+
                 // Initialize fees
                 $overdueFine = 0;
                 $lostFine = 0;
                 $damageFine = 0;
-                $itemStatus = $item->item_status ?? "borrowed";
+                $itemStatus = "returned";
+                $lifecycleStatus = "returned";
 
                 \Log::info("=== Processing Item #{$item->id} ===");
                 \Log::info("Book: {$item->book->title}");
@@ -131,6 +149,7 @@ class TransactionService
                     in_array($item->id, $data["lost_items"])
                 ) {
                     $itemStatus = "lost";
+                    $lifecycleStatus = "lost";
                     $lostFine = $this->feeCalculator->calculateLostBookFine(
                         $item->book,
                     );
@@ -141,6 +160,7 @@ class TransactionService
                 if (isset($data["damaged_items"][$item->id])) {
                     $damageData = $data["damaged_items"][$item->id];
                     $itemStatus = "damaged";
+                    $lifecycleStatus = "returned"; // Damaged items are still returned
                     $damageFine = $damageData["fine"] ?? 0;
                 }
 
@@ -150,10 +170,13 @@ class TransactionService
 
                 // Update all fields at once
                 \Log::info(
-                    "Updating item with: overdue=\${$overdueFine}, lost=\${$lostFine}, damage=\${$damageFine}, total=\${$totalFine}",
+                    "Updating item with: overdue=\${$overdueFine}, lost=\${$lostFine}, damage=\${$damageFine}, total=\${$totalFine}, lifecycle={$lifecycleStatus}",
                 );
                 $item->update([
                     "item_status" => $itemStatus,
+                    "lifecycle_status" => $lifecycleStatus,
+                    "returned_date" =>
+                        $lifecycleStatus === "returned" ? $returnDate : null,
                     "overdue_fine" => $overdueFine,
                     "lost_fine" => $lostFine,
                     "damage_fine" => $damageFine,
@@ -185,18 +208,42 @@ class TransactionService
                 \Log::info("  total_fine via model: \${$item->total_fine}");
 
                 // Return book to stock (unless lost)
-                if ($itemStatus !== "lost") {
+                if ($lifecycleStatus !== "lost") {
                     $item->book->increment("stock");
                 }
             }
 
+            // Refresh items to get latest lifecycle status
+            $transaction->load("items");
+
             // Determine final transaction status
             $status = $this->determineReturnStatus($transaction, $returnDate);
 
-            $transaction->update([
-                "returned_date" => $returnDate,
+            // Check if all items are processed (returned or lost)
+            $allItemsProcessed = $transaction->items->every(
+                fn($item) => in_array($item->lifecycle_status, [
+                    "returned",
+                    "lost",
+                ]),
+            );
+
+            // Update transaction
+            $transactionUpdate = [
                 "status" => $status,
-            ]);
+            ];
+
+            // Only set returned_date if all items are processed
+            if ($allItemsProcessed) {
+                $transactionUpdate["returned_date"] = $returnDate;
+                $transactionUpdate["lifecycle_status"] =
+                    LifecycleStatus::Completed;
+            } else {
+                // Partial return - transaction stays active
+                $transactionUpdate["lifecycle_status"] =
+                    LifecycleStatus::Active;
+            }
+
+            $transaction->update($transactionUpdate);
 
             // Refresh transaction to get latest data
             $transaction = $transaction->fresh([
@@ -544,6 +591,11 @@ class TransactionService
     protected function validateRenewal(Transaction $transaction): array
     {
         $reasons = [];
+
+        // Check lifecycle status first
+        if (!$transaction->isActive()) {
+            $reasons[] = "Cannot renew completed transaction";
+        }
 
         // Check if already returned
         if ($transaction->returned_date) {
