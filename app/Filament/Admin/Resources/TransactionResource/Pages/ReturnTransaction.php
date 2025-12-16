@@ -146,14 +146,14 @@ class ReturnTransaction extends Page
                                 ->required()
                                 ->default(now())
                                 ->native(false)
-                                ->reactive()
+                                ->live()
                                 ->helperText(
                                     "Select the date when books were/are being returned. You can select past dates for delayed returns.",
                                 ),
 
                             Repeater::make("items")
                                 ->label("Returned Books")
-                                ->reactive()
+                                ->live()
                                 ->schema([
                                     Grid::make(3)->schema([
                                         TextInput::make("book_title")
@@ -164,7 +164,7 @@ class ReturnTransaction extends Page
                                         Toggle::make("is_lost")
                                             ->label("Mark as Lost")
                                             ->inline(false)
-                                            ->reactive()
+                                            ->live()
                                             ->helperText(
                                                 "Book was not returned",
                                             ),
@@ -172,7 +172,7 @@ class ReturnTransaction extends Page
                                         Toggle::make("is_damaged")
                                             ->label("Mark as Damaged")
                                             ->inline(false)
-                                            ->reactive()
+                                            ->live()
                                             ->helperText(
                                                 "Book returned with damage",
                                             ),
@@ -187,7 +187,7 @@ class ReturnTransaction extends Page
                                                 ->step(0.01)
                                                 ->minValue(0)
                                                 ->default(0)
-                                                ->reactive()
+                                                ->live()
                                                 ->visible(
                                                     fn(Get $get) => $get(
                                                         "is_damaged",
@@ -218,7 +218,6 @@ class ReturnTransaction extends Page
 
                             Placeholder::make("fee_preview")
                                 ->label("Fee Calculation Preview")
-                                ->reactive()
                                 ->content(
                                     fn(Get $get) => $this->renderFeePreview(
                                         $get,
@@ -299,13 +298,12 @@ class ReturnTransaction extends Page
     ): \Illuminate\Support\HtmlString {
         \Log::info("=== FEE PREVIEW RENDER CALLED ===");
 
-        // Use getRawState() since reactive() doesn't track $get() dependencies the same way
-        $allData = $this->form->getRawState();
-        $returnDate = $allData["returned_date"] ?? null;
-        $itemsData = $allData["items"] ?? [];
+        // Read values using $get to establish reactive dependencies
+        $returnDate = $get("returned_date");
+        $itemsData = $get("items") ?? [];
 
-        \Log::info("Return Date: " . ($returnDate ?? "null"));
-        \Log::info("Items data: " . json_encode($itemsData));
+        \Log::info("Return Date from \$get: " . ($returnDate ?? "null"));
+        \Log::info("Items data from \$get: " . json_encode($itemsData));
 
         if (!$returnDate) {
             $returnDate = now();
@@ -324,9 +322,12 @@ class ReturnTransaction extends Page
         ];
 
         foreach ($this->record->items as $index => $item) {
-            $itemData = $itemsData[$index] ?? [];
+            // Find the matching item data by item ID, not by array index
+            $itemData = collect($itemsData)->firstWhere("id", $item->id) ?? [];
 
-            \Log::info("Item {$index}: " . $item->book->title);
+            \Log::info(
+                "Item {$index} (ID: {$item->id}): " . $item->book->title,
+            );
             \Log::info(
                 "  - is_lost from form: " .
                     json_encode($itemData["is_lost"] ?? false),
