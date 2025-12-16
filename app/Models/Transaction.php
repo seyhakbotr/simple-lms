@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -44,6 +45,14 @@ class Transaction extends Model
     public function items(): HasMany
     {
         return $this->hasMany(TransactionItem::class);
+    }
+
+    /**
+     * Get the invoice for this transaction
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
     }
 
     /**

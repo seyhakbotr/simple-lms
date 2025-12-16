@@ -13,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class TransactionService
 {
-    public function __construct(protected FeeCalculator $feeCalculator) {}
+    public function __construct(
+        protected FeeCalculator $feeCalculator,
+        protected InvoiceService $invoiceService,
+    ) {}
 
     /**
      * Create a new borrow transaction
@@ -195,7 +198,28 @@ class TransactionService
                 "status" => $status,
             ]);
 
-            return $transaction->fresh(["items.book", "user.membershipType"]);
+            // Refresh transaction to get latest data
+            $transaction = $transaction->fresh([
+                "items.book",
+                "user.membershipType",
+            ]);
+
+            // Generate invoice if there are any fees
+            $invoice = $this->invoiceService->generateInvoiceForTransaction(
+                $transaction,
+            );
+
+            if ($invoice) {
+                \Log::info(
+                    "Invoice generated for transaction {$transaction->reference_no}",
+                    [
+                        "invoice_number" => $invoice->invoice_number,
+                        "total_amount" => $invoice->formatted_total_amount,
+                    ],
+                );
+            }
+
+            return $transaction;
         });
     }
 
