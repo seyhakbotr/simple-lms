@@ -65,7 +65,7 @@ class Transaction extends Model
      * Calculate total fine for all items in this transaction
      * Uses stored fines if transaction is returned, otherwise calculates current overdue
      */
-    public function getTotalFineAttribute(): int
+    public function getTotalFineAttribute(): float
     {
         if (!$this->returned_date) {
             // For active transactions, calculate current overdue
@@ -74,8 +74,8 @@ class Transaction extends Model
             });
         }
 
-        // For returned transactions, use stored fines
-        return $this->items->sum("fine");
+        // For returned transactions, use stored fines (MoneyCast returns as dollars)
+        return $this->items->sum("total_fine");
     }
 
     /**
@@ -262,13 +262,8 @@ class Transaction extends Model
         });
 
         static::saved(function ($transaction) {
-            // Update fines for all items when returned_date is set or changed
-            if (
-                $transaction->returned_date &&
-                $transaction->wasChanged("returned_date")
-            ) {
-                $transaction->updateFines();
-            }
+            // Don't auto-update fines - TransactionService handles this properly
+            // Removing this prevents overwriting fees with zeros after they're set
 
             // Update status to Lost or Damaged if items are marked as such
             if (

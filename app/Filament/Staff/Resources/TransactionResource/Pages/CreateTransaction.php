@@ -3,8 +3,6 @@
 namespace App\Filament\Staff\Resources\TransactionResource\Pages;
 
 use App\Filament\Staff\Resources\TransactionResource;
-use App\Models\Transaction;
-use App\Models\User;
 use App\Services\TransactionService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -31,33 +29,23 @@ class CreateTransaction extends CreateRecord
         ];
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        // Transform the 'transactions' repeater data to 'items' for the service
-        if (isset($data["transactions"])) {
-            $data["items"] = $data["transactions"];
-            unset($data["transactions"]);
-        }
-
-        return $data;
-    }
-
     protected function handleRecordCreation(array $data): Model
     {
         $transactionService = app(TransactionService::class);
 
         try {
-            $transaction = $transactionService->createTransaction($data);
+            $transaction = $transactionService->createBorrowTransaction($data);
 
             // Success notification
-            $user = User::find($transaction->user_id);
             $itemCount = $transaction->items()->count();
+            $userName = $transaction->user->name;
+            $dueDate = $transaction->due_date->format("M d, Y");
 
             Notification::make()
                 ->success()
                 ->title("Transaction Created Successfully")
                 ->body(
-                    "Created transaction for {$user->name}. {$itemCount} book(s) borrowed.",
+                    "{$userName} borrowed {$itemCount} book(s). Due: {$dueDate}",
                 )
                 ->send();
 
@@ -71,6 +59,7 @@ class CreateTransaction extends CreateRecord
                 ->danger()
                 ->title("Transaction Creation Failed")
                 ->body($e->getMessage())
+                ->persistent()
                 ->send();
 
             $this->halt();

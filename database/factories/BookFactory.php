@@ -25,7 +25,7 @@ class BookFactory extends Factory
             "genre_id" => Genre::factory(),
             "title" => fake()->name(),
             "isbn" => fake()->unique()->isbn13(),
-            "price" => fake()->numberBetween(500, 10000), // Price in cents ($5.00 to $100.00)
+            "price" => fake()->randomFloat(2, 5, 100), // Price in dollars ($5.00 to $100.00) - MoneyCast converts to cents
             "description" => fake()->realText(600),
             "stock" => fake()->numberBetween(0, 100),
             "available" => fake()->boolean(50),

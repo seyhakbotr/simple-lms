@@ -13,11 +13,14 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        Role::factory(3)
-            ->state(new Sequence(
-                ['name' => 'admin', 'description' => 'Admin Privilege'],
-                ['name' => 'staff', 'description' => 'Staff Privilege'],
-                ['name' => 'borrower', 'description' => 'Borrower Privilege'],
-            ))->create();
+        $roles = [
+            ["name" => "admin", "description" => "Admin Privilege"],
+            ["name" => "staff", "description" => "Staff Privilege"],
+            ["name" => "borrower", "description" => "Borrower Privilege"],
+        ];
+
+        foreach ($roles as $role) {
+            Role::updateOrCreate(["name" => $role["name"]], $role);
+        }
     }
 }

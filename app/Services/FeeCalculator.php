@@ -17,16 +17,26 @@ class FeeCalculator
     }
 
     /**
+     * Get fee settings
+     *
+     * @return FeeSettings
+     */
+    public function getFeeSettings(): FeeSettings
+    {
+        return $this->feeSettings;
+    }
+
+    /**
      * Calculate overdue fine for a transaction item
      *
      * @param TransactionItem $item
      * @param Carbon|null $returnDate
-     * @return int Fine amount in cents
+     * @return float Fine amount in dollars
      */
     public function calculateOverdueFine(
         TransactionItem $item,
         ?Carbon $returnDate = null,
-    ): int {
+    ): float {
         if (!$this->feeSettings->overdue_fee_enabled) {
             return 0;
         }
@@ -37,14 +47,14 @@ class FeeCalculator
             return 0;
         }
 
-        $dueDate = $item->due_date;
-        $returnDate = Carbon::parse($returnDate);
+        $dueDate = $item->due_date->startOfDay();
+        $returnDate = Carbon::parse($returnDate)->startOfDay();
 
         if ($returnDate->lte($dueDate)) {
             return 0;
         }
 
-        // Calculate days late
+        // Calculate days late (whole days only, no fractional days)
         $daysLate = $dueDate->diffInDays($returnDate);
 
         // Apply grace period
@@ -63,7 +73,7 @@ class FeeCalculator
             );
         }
 
-        // Calculate fine
+        // Calculate fine (fee_per_day is in dollars)
         $fine = $daysLate * $this->feeSettings->overdue_fee_per_day;
 
         // Apply maximum amount cap if set
@@ -79,23 +89,22 @@ class FeeCalculator
             return 0;
         }
 
-        return (int) round($fine * 100); // Convert to cents
+        return $fine; // Return in dollars - MoneyCast will convert to cents for storage
     }
 
     /**
      * Calculate lost book fine
      *
      * @param Book $book
-     * @return int Fine amount in cents
+     * @return float Fine amount in dollars
      */
-    public function calculateLostBookFine(Book $book): int
+    public function calculateLostBookFine(Book $book): float
     {
         $fine = 0;
 
         if ($this->feeSettings->lost_book_fine_type === "percentage") {
-            // Calculate based on book price
-            // Book price is stored in cents, convert to dollars first
-            $bookPriceInDollars = ($book->price ?? 0) / 100;
+            // Calculate based on book price (MoneyCast already returns it in dollars)
+            $bookPriceInDollars = $book->price ?? 0;
             $fine =
                 ($bookPriceInDollars *
                     $this->feeSettings->lost_book_fine_rate) /
@@ -121,16 +130,16 @@ class FeeCalculator
             $fine = $this->feeSettings->lost_book_fine_rate;
         }
 
-        return (int) round($fine * 100); // Convert to cents
+        return $fine; // Return in dollars - MoneyCast will convert to cents for storage
     }
 
     /**
      * Calculate current overdue fine for items that haven't been returned yet
      *
      * @param TransactionItem $item
-     * @return int Fine amount in cents if returned today
+     * @return float Fine amount in dollars if returned today
      */
-    public function calculateCurrentOverdueFine(TransactionItem $item): int
+    public function calculateCurrentOverdueFine(TransactionItem $item): float
     {
         if ($item->transaction->returned_date) {
             return $item->fine ?? 0;
@@ -142,13 +151,13 @@ class FeeCalculator
     /**
      * Format fine amount for display
      *
-     * @param int $amountInCents
+     * @param float $amountInDollars
      * @return string Formatted amount with currency symbol
      */
-    public function formatFine(int $amountInCents): string
+    public function formatFine(float $amountInDollars): string
     {
-        $amount = $amountInCents / 100;
-        return $this->feeSettings->currency_symbol . number_format($amount, 2);
+        return $this->feeSettings->currency_symbol .
+            number_format($amountInDollars, 2);
     }
 
     /**
@@ -188,9 +197,9 @@ class FeeCalculator
      * Calculate total outstanding fines for a user
      *
      * @param \App\Models\User $user
-     * @return int Total fines in cents
+     * @return float Total fines in dollars
      */
-    public function calculateUserTotalFines($user): int
+    public function calculateUserTotalFines($user): float
     {
         $totalFines = 0;
 
@@ -213,9 +222,9 @@ class FeeCalculator
      * Calculate total fine for a transaction
      *
      * @param \App\Models\Transaction $transaction
-     * @return int Total fines in cents
+     * @return float Total fines in dollars
      */
-    public function calculateTransactionTotalFine($transaction): int
+    public function calculateTransactionTotalFine($transaction): float
     {
         if (!$transaction->returned_date) {
             // For active transactions, calculate current overdue

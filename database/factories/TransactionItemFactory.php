@@ -19,21 +19,23 @@ class TransactionItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'transaction_id' => Transaction::factory(),
-            'book_id' => Book::factory(),
-            'borrowed_for' => fake()->numberBetween(7, 30),
-            'fine' => null,
+            "transaction_id" => Transaction::factory(),
+            "book_id" => Book::factory(),
+            "borrowed_for" => fake()->numberBetween(7, 30),
+            "fine" => null,
         ];
     }
 
     /**
      * Indicate that this item has a fine (was returned late).
      */
-    public function withFine(int $fine = null): static
+    public function withFine(float $fine = null): static
     {
-        return $this->state(fn (array $attributes) => [
-            'fine' => $fine ?? fake()->numberBetween(10, 100),
-        ]);
+        return $this->state(
+            fn(array $attributes) => [
+                "fine" => $fine ?? fake()->randomFloat(2, 1, 10), // Fine in dollars ($1.00 to $10.00) - MoneyCast converts to cents
+            ],
+        );
     }
 
     /**
@@ -41,8 +43,10 @@ class TransactionItemFactory extends Factory
      */
     public function borrowedFor(int $days): static
     {
-        return $this->state(fn (array $attributes) => [
-            'borrowed_for' => $days,
-        ]);
+        return $this->state(
+            fn(array $attributes) => [
+                "borrowed_for" => $days,
+            ],
+        );
     }
 }

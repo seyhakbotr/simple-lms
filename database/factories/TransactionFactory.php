@@ -64,10 +64,21 @@ class TransactionFactory extends Factory
             // Calculate fines for all items after creation if transaction is returned
             if ($transaction->returned_date) {
                 $transaction->refresh();
+                $feeCalculator = app(\App\Services\FeeCalculator::class);
+
                 foreach ($transaction->items as $item) {
-                    $fine = $item->calculateFine();
-                    if ($fine > 0) {
-                        $item->update(["fine" => $fine]);
+                    // Calculate overdue fine using the FeeCalculator
+                    $overdueFine = $feeCalculator->calculateOverdueFine(
+                        $item,
+                        $transaction->returned_date,
+                    );
+
+                    if ($overdueFine > 0) {
+                        $item->update([
+                            "overdue_fine" => $overdueFine,
+                            "total_fine" => $overdueFine,
+                            "fine" => $overdueFine, // Legacy field
+                        ]);
                     }
                 }
             }

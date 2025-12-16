@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use App\Services\FeeCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,11 +30,11 @@ class TransactionItem extends Model
 
     protected $casts = [
         "borrowed_for" => "integer",
-        "fine" => "integer", // Legacy
-        "overdue_fine" => "integer",
-        "lost_fine" => "integer",
-        "damage_fine" => "integer",
-        "total_fine" => "integer",
+        "fine" => MoneyCast::class, // Legacy - stores as cents, works as dollars
+        "overdue_fine" => MoneyCast::class, // Stores as cents, works as dollars
+        "lost_fine" => MoneyCast::class, // Stores as cents, works as dollars
+        "damage_fine" => MoneyCast::class, // Stores as cents, works as dollars
+        "total_fine" => MoneyCast::class, // Stores as cents, works as dollars
     ];
 
     public function transaction(): BelongsTo
@@ -48,12 +49,11 @@ class TransactionItem extends Model
 
     /**
      * Calculate the due date for this item
+     * Uses the transaction's due_date as all items in a transaction share the same due date
      */
     public function getDueDateAttribute(): Carbon
     {
-        return Carbon::parse($this->transaction->borrowed_date)->addDays(
-            $this->borrowed_for,
-        );
+        return Carbon::parse($this->transaction->due_date);
     }
 
     /**

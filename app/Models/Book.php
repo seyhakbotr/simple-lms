@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,7 @@ class Book extends Model implements HasMedia
     protected $casts = [
         "available" => "boolean",
         "published" => "date",
+        "price" => MoneyCast::class, // Stores as cents in DB, works as dollars in code
     ];
 
     public function author(): BelongsTo

@@ -42,6 +42,7 @@ class TransactionObserver
         $bookText = $bookCount === 1 ? "a book" : $bookCount . " books";
 
         if (
+            auth()->check() &&
             auth()->user()->role->name == "staff" &&
             $transaction->status == BorrowedStatus::Returned
         ) {
@@ -59,6 +60,7 @@ class TransactionObserver
         }
 
         if (
+            auth()->check() &&
             auth()->user()->role->name == "staff" &&
             $transaction->status == BorrowedStatus::Delayed
         ) {
