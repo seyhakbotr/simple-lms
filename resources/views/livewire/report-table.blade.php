@@ -2,3 +2,4 @@
     {{ $this->table }}
 </div>
 
+

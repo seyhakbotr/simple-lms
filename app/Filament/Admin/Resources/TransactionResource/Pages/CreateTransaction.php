@@ -47,17 +47,18 @@ class CreateTransaction extends CreateRecord
         $transactionService = app(TransactionService::class);
 
         try {
-            $transaction = $transactionService->createTransaction($data);
+            $transaction = $transactionService->createBorrowTransaction($data);
 
             // Success notification
-            $user = User::find($transaction->user_id);
             $itemCount = $transaction->items()->count();
+            $userName = $transaction->user->name;
+            $dueDate = $transaction->due_date->format("M d, Y");
 
             Notification::make()
                 ->success()
                 ->title("Transaction Created Successfully")
                 ->body(
-                    "Created transaction for {$user->name}. {$itemCount} book(s) borrowed.",
+                    "{$userName} borrowed {$itemCount} book(s). Due: {$dueDate}",
                 )
                 ->send();
 
@@ -71,6 +72,7 @@ class CreateTransaction extends CreateRecord
                 ->danger()
                 ->title("Transaction Creation Failed")
                 ->body($e->getMessage())
+                ->persistent()
                 ->send();
 
             $this->halt();

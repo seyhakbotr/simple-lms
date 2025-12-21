@@ -1,5 +1,17 @@
 <x-filament-panels::page>
     <div class="space-y-6">
+        <!-- Date Filters -->
+        <x-filament::section class="no-print">
+            <x-slot name="heading">
+                Filter by Date
+            </x-slot>
+            <x-slot name="description">
+                Select start and end dates to filter the reports
+            </x-slot>
+
+            {{ $this->form }}
+        </x-filament::section>
+
         <!-- Most Borrowed Books -->
         <x-filament::section>
             <x-slot name="heading">
@@ -144,4 +156,54 @@
             </div>
         </x-filament::section>
     </div>
+
+    <!-- Print Styles -->
+    <style media="print">
+        /* Hide only the filter section */
+        .no-print {
+            display: none !important;
+        }
+
+        /* Basic body styling */
+        body {
+            font-family: Arial, sans-serif !important;
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 10px !important;
+        }
+
+        /* Simple table styling */
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-bottom: 20px !important;
+            font-size: 11px !important;
+        }
+
+        th, td {
+            border: 1px solid #000 !important;
+            padding: 6px !important;
+            text-align: left !important;
+        }
+
+        th {
+            background-color: #f0f0f0 !important;
+            font-weight: bold !important;
+        }
+
+        /* Page margins */
+        @page {
+            margin: 0.5in;
+        }
+    </style>
+
+    <!-- Print Script -->
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('print-report', () => {
+                window.print();
+            });
+        });
+    </script>
 </x-filament-panels::page>
