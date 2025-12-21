@@ -56,6 +56,11 @@ class Book extends Model implements HasMedia
         return $this->hasMany(StockTransactionItem::class);
     }
 
+    public function transactionItems(): HasMany
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
+
     public static function booted(): void
     {
         parent::boot();

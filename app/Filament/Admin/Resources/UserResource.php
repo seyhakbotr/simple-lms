@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\UserResource\Pages;
 use App\Http\Traits\NavigationCount;
 use App\Models\User;
+use App\Models\MembershipType;
 use Filament\AvatarProviders\UiAvatarsProvider;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DatePicker;
@@ -27,6 +28,7 @@ use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class UserResource extends Resource
 {
@@ -84,7 +86,8 @@ class UserResource extends Resource
                             ])
                             ->columns(2),
                     ])
-                    ->columnSpan(["sm" => 2, "md" => 2, "xxl" => 5]),
+                    ->columnSpan(["sm" => 2, "md" => 2, "lg" => 2]),
+
                 Group::make()
                     ->schema([
                         Section::make("User Avatar")->schema([
@@ -104,7 +107,8 @@ class UserResource extends Resource
                             Select::make("role_id")
                                 ->relationship("role", "name")
                                 ->native(false)
-                                ->required(),
+                                ->required()
+                                ->live(),
                         ]),
 
                         Section::make("Membership")
@@ -123,34 +127,88 @@ class UserResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->live()
-                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                        if ($state && !$get('membership_started_at')) {
-                                            $set('membership_started_at', now());
-
-                                            $membershipType = \App\Models\MembershipType::find($state);
-                                            if ($membershipType) {
-                                                $set('membership_expires_at', now()->addMonths($membershipType->membership_duration_months));
+                                    ->afterStateUpdated(function (
+                                        $state,
+                                        callable $set,
+                                        callable $get,
+                                    ) {
+                                        if ($state) {
+                                            $type = MembershipType::find(
+                                                $state,
+                                            );
+                                            if (
+                                                $type &&
+                                                $type->membership_duration_months
+                                            ) {
+                                                $start =
+                                                    $get(
+                                                        "membership_started_at",
+                                                    ) ?? now();
+                                                $set(
+                                                    "membership_expires_at",
+                                                    Carbon::parse(
+                                                        $start,
+                                                    )->addMonths(
+                                                        $type->membership_duration_months,
+                                                    ),
+                                                );
                                             }
                                         }
                                     })
-                                    ->helperText("Select membership type for this borrower"),
+                                    ->helperText(
+                                        "Select membership type for this borrower",
+                                    ),
 
                                 DatePicker::make("membership_started_at")
                                     ->label("Started")
                                     ->native(false)
                                     ->live()
-                                    ->default(now()),
+                                    ->default(now())
+                                    ->afterStateUpdated(function (
+                                        $state,
+                                        callable $set,
+                                        callable $get,
+                                    ) {
+                                        $typeId = $get("membership_type_id");
+                                        if ($state && $typeId) {
+                                            $type = MembershipType::find(
+                                                $typeId,
+                                            );
+                                            if (
+                                                $type &&
+                                                $type->membership_duration_months
+                                            ) {
+                                                $set(
+                                                    "membership_expires_at",
+                                                    Carbon::parse(
+                                                        $state,
+                                                    )->addMonths(
+                                                        $type->membership_duration_months,
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                    }),
 
                                 DatePicker::make("membership_expires_at")
                                     ->label("Expires")
                                     ->native(false)
                                     ->after("membership_started_at")
-                                    ->helperText(fn($record) => $record && $record->membershipExpired() ? '⚠️ Expired!' : null),
+                                    ->helperText(
+                                        fn($record) => $record &&
+                                        method_exists(
+                                            $record,
+                                            "membershipExpired",
+                                        ) &&
+                                        $record->membershipExpired()
+                                            ? "⚠️ Expired!"
+                                            : null,
+                                    ),
                             ])
-                            ->visible(fn($get) => $get("role_id") == 3)
+                            ->visible(fn($get) => (int) $get("role_id") === 3)
                             ->description("Assign membership to this borrower"),
                     ])
-                    ->columnSpan(["sm" => 2, "md" => 1, "xxl" => 1]),
+                    ->columnSpan(["sm" => 2, "md" => 1, "lg" => 1]),
             ]),
         ]);
     }
@@ -159,12 +217,7 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                ImageColumn::make("avatar_url")
-                    ->label("Avatar")
-                    ->defaultImageUrl(
-                        fn($record) => $record->avatar_url ?: (new UiAvatarsProvider())->get($record)
-                    )
-                    ->circular(),
+                ImageColumn::make("avatar_url")->label("Avatar")->circular(),
                 TextColumn::make("name")->searchable()->sortable(),
                 TextColumn::make("email")->searchable()->copyable(),
                 TextColumn::make("role.name")->badge()->sortable(),
@@ -180,7 +233,9 @@ class UserResource extends Resource
                     ->date()
                     ->sortable()
                     ->color(
-                        fn($record) => $record && $record->membershipExpired()
+                        fn($record) => $record &&
+                        method_exists($record, "membershipExpired") &&
+                        $record->membershipExpired()
                             ? "danger"
                             : "success",
                     )
@@ -188,14 +243,12 @@ class UserResource extends Resource
                     ->toggleable(),
                 ToggleColumn::make("status")->label("Active"),
             ])
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->actions([
                 ActionGroup::make([
                     EditAction::make(),
                     DeleteAction::make()->before(function ($record) {
-                        if (!is_null($record->avatar_url)) {
+                        if ($record->avatar_url) {
                             Storage::disk("public")->delete(
                                 $record->avatar_url,
                             );
@@ -207,7 +260,7 @@ class UserResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make()->before(function ($records) {
                         $records->each(function ($record) {
-                            if (!is_null($record->avatar_url)) {
+                            if ($record->avatar_url) {
                                 Storage::disk("public")->delete(
                                     $record->avatar_url,
                                 );
@@ -220,9 +273,7 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-                //
-            ];
+        return [];
     }
 
     public static function getPages(): array

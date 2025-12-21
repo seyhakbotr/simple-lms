@@ -314,6 +314,88 @@ class ViewInvoice extends ViewRecord
                             ->send();
                     }
                 }),
+
+            Actions\Action::make("waive")
+                ->label("Waive Invoice")
+                ->icon("heroicon-o-x-circle")
+                ->color("warning")
+                ->visible(
+                    fn(Invoice $record) => !$record->isPaid() &&
+                        $record->status !== "waived",
+                )
+                ->requiresConfirmation()
+                ->modalHeading("Waive Invoice")
+                ->modalDescription(
+                    "Are you sure you want to waive this invoice? This action will set the amount due to zero.",
+                )
+                ->form([
+                    Forms\Components\Textarea::make("reason")
+                        ->label("Reason for Waiving")
+                        ->required()
+                        ->rows(4)
+                        ->helperText(
+                            "Please provide a detailed reason for waiving this invoice.",
+                        ),
+                ])
+                ->action(function (array $data) {
+                    try {
+                        $invoiceService = app(InvoiceService::class);
+                        $invoiceService->waiveInvoice(
+                            $this->record,
+                            $data["reason"],
+                        );
+
+                        Notification::make()
+                            ->success()
+                            ->title("Invoice Waived")
+                            ->body("The invoice has been waived successfully.")
+                            ->send();
+
+                        // Refresh the record
+                        $this->record->refresh();
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title("Error Waiving Invoice")
+                            ->body($e->getMessage())
+                            ->send();
+                    }
+                }),
+
+            Actions\Action::make("download_pdf")
+                ->label("Download PDF")
+                ->icon("heroicon-o-arrow-down-tray")
+                ->color("primary")
+                ->action(function () {
+                    $invoiceService = app(\App\Services\InvoiceService::class);
+                    $data = $invoiceService->getInvoiceData($this->record);
+
+                    return response()->streamDownload(function () use ($data) {
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                            "pdf.invoice",
+                            [
+                                "data" => $data,
+                            ],
+                        );
+                        echo $pdf->output();
+                    }, "invoice-{$data["invoice_number"]}.pdf");
+                }),
+
+            Actions\Action::make("print")
+                ->label("Print")
+                ->icon("heroicon-o-printer")
+                ->color("secondary")
+                ->action(function () {
+                    Notification::make()
+                        ->info()
+                        ->title("Coming Soon")
+                        ->body("Print functionality will be available soon.")
+                        ->send();
+                }),
+
+            Actions\DeleteAction::make()->visible(
+                fn() => auth()->user()?->role?->name === "Admin",
+            ),
         ];
     }
 }

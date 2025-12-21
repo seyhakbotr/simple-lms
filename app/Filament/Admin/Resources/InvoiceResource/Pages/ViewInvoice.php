@@ -367,13 +367,18 @@ class ViewInvoice extends ViewRecord
                 ->icon("heroicon-o-arrow-down-tray")
                 ->color("primary")
                 ->action(function () {
-                    Notification::make()
-                        ->info()
-                        ->title("Coming Soon")
-                        ->body(
-                            "PDF download functionality will be available soon.",
-                        )
-                        ->send();
+                    $invoiceService = app(\App\Services\InvoiceService::class);
+                    $data = $invoiceService->getInvoiceData($this->record);
+
+                    return response()->streamDownload(function () use ($data) {
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                            "pdf.invoice",
+                            [
+                                "data" => $data,
+                            ],
+                        );
+                        echo $pdf->output();
+                    }, "invoice-{$data["invoice_number"]}.pdf");
                 }),
 
             Actions\Action::make("print")

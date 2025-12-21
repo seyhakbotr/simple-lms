@@ -12,7 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-
+use Barryvdh\DomPDF\Facade\Pdf;
 class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
@@ -32,7 +32,7 @@ class InvoiceResource extends Resource
                         ->label("Invoice Number")
                         ->disabled()
                         ->dehydrated(false)
-                        ->default(fn() => Invoice::generateInvoiceNumber()),
+                        ->default(fn() => Innvoice::generateInvoiceNumber()),
 
                     Forms\Components\Select::make("transaction_id")
                         ->label("Transaction")
@@ -330,8 +330,6 @@ class InvoiceResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-
                 Tables\Actions\Action::make("record_payment")
                     ->label("Record Payment")
                     ->icon("heroicon-o-currency-dollar")
@@ -348,7 +346,8 @@ class InvoiceResource extends Resource
                             ->required()
                             ->minValue(0.01)
                             ->maxValue(
-                                fn(Invoice $record) => $record->amount_due,
+                                fn(Invoice $record) => $record->amount_due /
+                                    100,
                             ),
 
                         Forms\Components\Select::make("payment_method")
@@ -434,20 +433,103 @@ class InvoiceResource extends Resource
                 Tables\Actions\Action::make("download_pdf")
                     ->label("Download PDF")
                     ->icon("heroicon-o-arrow-down-tray")
-                    ->color("primary")
+                    ->color("success")
                     ->action(function (Invoice $record) {
-                        Notification::make()
-                            ->info()
-                            ->title("Coming Soon")
-                            ->body("PDF generation will be available soon.")
-                            ->send();
+                        $invoiceService = app(InvoiceService::class);
+                        $data = $invoiceService->getInvoiceData($record);
+
+                        return response()->streamDownload(function () use (
+                            $data,
+                        ) {
+                            $pdf = Pdf::loadView("pdf.invoice", [
+                                "data" => $data,
+                            ]);
+                            echo $pdf->output();
+                        }, "invoice-{$data["invoice_number"]}.pdf");
                     }),
+
+                Tables\Actions\Action::make("view_pdf")
+                    ->label("Preview PDF")
+                    ->icon("heroicon-o-eye")
+                    ->color("info")
+                    ->url(
+                        fn(Invoice $record): string => route(
+                            "invoices.pdf.preview",
+                            $record,
+                        ),
+                    )
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()->visible(
-                        fn() => auth()->user()?->role?->name === "Admin",
-                    ),
+                    Tables\Actions\DeleteBulkAction::make(),
+
+                    // Bulk PDF download (generates a ZIP file with all selected invoices)
+                    Tables\Actions\BulkAction::make("download_pdfs")
+                        ->label("Download PDFs")
+                        ->icon("heroicon-o-arrow-down-tray")
+                        ->color("success")
+                        ->action(function ($records) {
+                            $invoiceService = app(InvoiceService::class);
+
+                            // If only one record, just download it
+                            if ($records->count() === 1) {
+                                $record = $records->first();
+                                $data = $invoiceService->getInvoiceData(
+                                    $record,
+                                );
+
+                                return response()->streamDownload(
+                                    function () use ($data) {
+                                        $pdf = Pdf::loadView("pdf.invoice", [
+                                            "data" => $data,
+                                        ]);
+                                        echo $pdf->output();
+                                    },
+                                    "invoice-{$data["invoice_number"]}.pdf",
+                                );
+                            }
+
+                            // For multiple records, create a ZIP file
+                            $zip = new \ZipArchive();
+                            $zipFileName =
+                                "invoices-" .
+                                now()->format("Y-m-d-His") .
+                                ".zip";
+                            $zipPath = storage_path("app/temp/" . $zipFileName);
+
+                            // Create temp directory if it doesn't exist
+                            if (!file_exists(storage_path("app/temp"))) {
+                                mkdir(storage_path("app/temp"), 0755, true);
+                            }
+
+                            if (
+                                $zip->open($zipPath, \ZipArchive::CREATE) ===
+                                true
+                            ) {
+                                foreach ($records as $record) {
+                                    $data = $invoiceService->getInvoiceData(
+                                        $record,
+                                    );
+                                    $pdf = Pdf::loadView("pdf.invoice", [
+                                        "data" => $data,
+                                    ]);
+                                    $zip->addFromString(
+                                        "invoice-{$data["invoice_number"]}.pdf",
+                                        $pdf->output(),
+                                    );
+                                }
+                                $zip->close();
+                            }
+
+                            return response()
+                                ->download($zipPath, $zipFileName)
+                                ->deleteFileAfterSend(true);
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->defaultSort("invoice_date", "desc");

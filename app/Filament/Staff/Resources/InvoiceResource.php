@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceResource extends Resource
 {
@@ -315,6 +316,36 @@ class InvoiceResource extends Resource
                                 ->send();
                         }
                     }),
+
+                Tables\Actions\Action::make("download_pdf")
+                    ->label("Download PDF")
+                    ->icon("heroicon-o-arrow-down-tray")
+                    ->color("success")
+                    ->action(function (Invoice $record) {
+                        $invoiceService = app(InvoiceService::class);
+                        $data = $invoiceService->getInvoiceData($record);
+
+                        return response()->streamDownload(function () use (
+                            $data,
+                        ) {
+                            $pdf = Pdf::loadView("pdf.invoice", [
+                                "data" => $data,
+                            ]);
+                            echo $pdf->output();
+                        }, "invoice-{$data["invoice_number"]}.pdf");
+                    }),
+
+                Tables\Actions\Action::make("view_pdf")
+                    ->label("Preview PDF")
+                    ->icon("heroicon-o-eye")
+                    ->color("info")
+                    ->url(
+                        fn(Invoice $record): string => route(
+                            "invoices.pdf.preview",
+                            $record,
+                        ),
+                    )
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
