@@ -89,16 +89,16 @@ class MembershipTypeResource extends Resource
 
             Forms\Components\Section::make("Financial")
                 ->schema([
-                    Forms\Components\TextInput::make("fine_rate")
-                        ->label("Fine Rate")
-                        ->required()
-                        ->numeric()
-                        ->minValue(0)
-                        ->step(0.01)
-                        ->default(10.0)
-                        ->prefix('$')
-                        ->suffix("per day")
-                        ->helperText("Fine charged per day for overdue books"),
+                    // Forms\Components\TextInput::make("fine_rate")
+                    //     ->label("Fine Rate")
+                    //     ->required()
+                    //     ->numeric()
+                    //     ->minValue(0)
+                    //     ->step(0.01)
+                    //     ->default(10.0)
+                    //     ->prefix('$')
+                    //     ->suffix("per day")
+                    //     ->helperText("Fine charged per day for overdue books"),
 
                     Forms\Components\TextInput::make("membership_fee")
                         ->label("Membership Fee")
@@ -158,11 +158,11 @@ class MembershipTypeResource extends Resource
                     ->suffix(" times")
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make("fine_rate")
-                    ->label("Fine Rate")
-                    ->money("usd")
-                    ->suffix("/day")
-                    ->sortable(),
+                // Tables\Columns\TextColumn::make("fine_rate")
+                //     ->label("Fine Rate")
+                //     ->money("usd")
+                //     ->suffix("/day")
+                //     ->sortable(),
 
                 Tables\Columns\TextColumn::make("membership_fee")
                     ->label("Fee")
