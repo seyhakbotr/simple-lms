@@ -13,6 +13,22 @@ A modern, feature-rich Library Management System built with Laravel and Filament
 - **Reports**: Generate various reports for library operations
 - **Responsive Design**: Works on desktop and mobile devices
 
+## Documentation
+
+Project documentation artifacts are available in the `docs/` folder:
+
+- `docs/00-Documentation-Index.md`
+- `docs/01-Project-Proposal.md`
+- `docs/02-SRS.md`
+- `docs/03-Project-Plan-WBS.md`
+- `docs/04-SDD.md`
+- `docs/05-Test-Plan.md`
+- `docs/06-Test-Summary-Report.md`
+- `docs/07-Project-Closing-Report.md`
+- `docs/User-Manual.md`
+- `docs/Status-Reports/Status-Report-Template.md`
+- `docs/Presentation-Slides-Outline.md`
+
 ## Prerequisites
 
 - PHP 8.2 or higher
