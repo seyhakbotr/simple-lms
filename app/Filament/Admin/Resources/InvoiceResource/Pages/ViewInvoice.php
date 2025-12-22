@@ -367,18 +367,27 @@ class ViewInvoice extends ViewRecord
                 ->icon("heroicon-o-arrow-down-tray")
                 ->color("primary")
                 ->action(function () {
-                    $invoiceService = app(\App\Services\InvoiceService::class);
-                    $data = $invoiceService->getInvoiceData($this->record);
-
-                    return response()->streamDownload(function () use ($data) {
-                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-                            "pdf.invoice",
-                            [
-                                "data" => $data,
-                            ],
-                        );
-                        echo $pdf->output();
-                    }, "invoice-{$data["invoice_number"]}.pdf");
+                    try {
+                        $invoiceService = app(\App\Services\InvoiceService::class);
+                        $data = $invoiceService->getInvoiceData($this->record);
+                        
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', ['data' => $data]);
+                        
+                        $fileName = 'invoice-' . $data['invoice_number'] . '.pdf';
+                        
+                        return response()->streamDownload(function() use ($pdf) {
+                            echo $pdf->output();
+                        }, $fileName, [
+                            'Content-Type' => 'application/pdf',
+                            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                        ]);
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Error generating PDF')
+                            ->body($e->getMessage())
+                            ->send();
+                    }
                 }),
 
             Actions\Action::make("print")
@@ -386,12 +395,33 @@ class ViewInvoice extends ViewRecord
                 ->icon("heroicon-o-printer")
                 ->color("secondary")
                 ->action(function () {
-                    Notification::make()
-                        ->info()
-                        ->title("Coming Soon")
-                        ->body("Print functionality will be available soon.")
-                        ->send();
-                }),
+                    try {
+                        $invoiceService = app(\App\Services\InvoiceService::class);
+                        $data = $invoiceService->getInvoiceData($this->record);
+                        
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', ['data' => $data]);
+                        
+                        $fileName = 'invoice-' . $data['invoice_number'] . '.pdf';
+                        
+                        return response()->streamDownload(
+                            function() use ($pdf) {
+                                echo $pdf->output();
+                            },
+                            $fileName,
+                            [
+                                'Content-Type' => 'application/pdf',
+                                'Content-Disposition' => 'inline; filename="' . $fileName . '"'
+                            ]
+                        );
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Error generating PDF for printing')
+                            ->body($e->getMessage())
+                            ->send();
+                    }
+                })
+                ->openUrlInNewTab(),
 
             Actions\DeleteAction::make()->visible(
                 fn() => auth()->user()?->role?->name === "Admin",

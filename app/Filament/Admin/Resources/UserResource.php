@@ -194,6 +194,8 @@ class UserResource extends Resource
                                     ->label("Expires")
                                     ->native(false)
                                     ->after("membership_started_at")
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->helperText(
                                         fn($record) => $record &&
                                         method_exists(
