@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\UserResource\Pages;
+use App\Filament\Admin\Resources\UserResource\RelationManagers\MembershipInvoicesRelationManager;
 use App\Http\Traits\NavigationCount;
 use App\Models\User;
 use App\Models\MembershipType;
@@ -127,34 +128,6 @@ class UserResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->live()
-                                    ->afterStateUpdated(function (
-                                        $state,
-                                        callable $set,
-                                        callable $get,
-                                    ) {
-                                        if ($state) {
-                                            $type = MembershipType::find(
-                                                $state,
-                                            );
-                                            if (
-                                                $type &&
-                                                $type->membership_duration_months
-                                            ) {
-                                                $start =
-                                                    $get(
-                                                        "membership_started_at",
-                                                    ) ?? now();
-                                                $set(
-                                                    "membership_expires_at",
-                                                    Carbon::parse(
-                                                        $start,
-                                                    )->addMonths(
-                                                        $type->membership_duration_months,
-                                                    ),
-                                                );
-                                            }
-                                        }
-                                    })
                                     ->helperText(
                                         "Select membership type for this borrower",
                                     ),
@@ -164,38 +137,13 @@ class UserResource extends Resource
                                     ->native(false)
                                     ->live()
                                     ->default(now())
-                                    ->afterStateUpdated(function (
-                                        $state,
-                                        callable $set,
-                                        callable $get,
-                                    ) {
-                                        $typeId = $get("membership_type_id");
-                                        if ($state && $typeId) {
-                                            $type = MembershipType::find(
-                                                $typeId,
-                                            );
-                                            if (
-                                                $type &&
-                                                $type->membership_duration_months
-                                            ) {
-                                                $set(
-                                                    "membership_expires_at",
-                                                    Carbon::parse(
-                                                        $state,
-                                                    )->addMonths(
-                                                        $type->membership_duration_months,
-                                                    ),
-                                                );
-                                            }
-                                        }
-                                    }),
+                                    ->dehydrated(true),
 
                                 DatePicker::make("membership_expires_at")
                                     ->label("Expires")
                                     ->native(false)
                                     ->after("membership_started_at")
-                                    ->disabled()
-                                    ->dehydrated()
+                                    ->dehydrated(true)
                                     ->helperText(
                                         fn($record) => $record &&
                                         method_exists(
@@ -275,7 +223,7 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [MembershipInvoicesRelationManager::class];
     }
 
     public static function getPages(): array

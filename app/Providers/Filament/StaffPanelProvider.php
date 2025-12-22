@@ -5,10 +5,12 @@ namespace App\Providers\Filament;
 use App\Filament\Staff\Pages\Auth\EditProfile;
 use App\Filament\Staff\Pages\Auth\Login;
 use App\Filament\Staff\Pages\Auth\Register;
+use App\Http\Middleware\RedirectAdminFromStaffPanel;
 use App\Settings\GeneralSettings;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -52,6 +54,14 @@ class StaffPanelProvider extends PanelProvider
                 'primary' => Color::Emerald,
             ])
             ->globalSearchKeyBindings(['ctrl+k, command+k'])
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label(fn () => __('messages.english'))
+                    ->postAction(fn () => route('locale.switch.post', 'en')),
+                MenuItem::make()
+                    ->label(fn () => __('messages.khmer'))
+                    ->postAction(fn () => route('locale.switch.post', 'km')),
+            ])
             ->discoverResources(in: app_path('Filament/Staff/Resources'), for: 'App\\Filament\\Staff\\Resources')
             ->discoverPages(in: app_path('Filament/Staff/Pages'), for: 'App\\Filament\\Staff\\Pages')
             ->pages([
@@ -71,6 +81,7 @@ class StaffPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                RedirectAdminFromStaffPanel::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

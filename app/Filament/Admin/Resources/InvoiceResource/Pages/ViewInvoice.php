@@ -47,17 +47,10 @@ class ViewInvoice extends ViewRecord
                                 ),
                             ),
 
-                        Infolists\Components\TextEntry::make(
-                            "transaction.reference_no",
-                        )
-                            ->label("Transaction")
-                            ->url(
-                                fn(Invoice $record) => route(
-                                    "filament.admin.resources.transactions.view",
-                                    ["record" => $record->transaction_id],
-                                ),
-                            )
-                            ->color("primary"),
+                        Infolists\Components\TextEntry::make("source")
+                            ->label("Source")
+                            ->url(fn(Invoice $record): ?string => $record->transaction ? route('filament.admin.resources.transactions.view', ['record' => $record->transaction_id]) : null)
+                            ->color(fn (Invoice $record): string => $record->transaction ? 'primary' : 'gray'),
                     ]),
                 ])
                 ->columns(1),

@@ -42,11 +42,21 @@ return new class extends Migration {
 
         // Set returned_date for items based on parent transaction
         DB::statement("
-            UPDATE transaction_items ti
-            INNER JOIN transactions t ON ti.transaction_id = t.id
-            SET ti.returned_date = t.returned_date
-            WHERE t.returned_date IS NOT NULL
-              AND ti.item_status IN ('returned', 'damaged')
+            UPDATE transaction_items
+            SET returned_date = (
+                SELECT returned_date
+                FROM transactions
+                WHERE transactions.id = transaction_items.transaction_id
+            )
+            WHERE
+                EXISTS (
+                    SELECT 1
+                    FROM transactions
+                    WHERE
+                        transactions.id = transaction_items.transaction_id
+                        AND transactions.returned_date IS NOT NULL
+                )
+                AND item_status IN ('returned', 'damaged')
         ");
     }
 

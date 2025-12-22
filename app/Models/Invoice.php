@@ -17,6 +17,7 @@ class Invoice extends Model
     protected $fillable = [
         "invoice_number",
         "transaction_id",
+        "membership_type_id",
         "user_id",
         "overdue_fee",
         "lost_fee",
@@ -52,11 +53,35 @@ class Invoice extends Model
     }
 
     /**
+     * Relationship to membership type
+     */
+    public function membershipType(): BelongsTo
+    {
+        return $this->belongsTo(MembershipType::class);
+    }
+
+    /**
      * Relationship to user (borrower)
      */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the source of the invoice (transaction, membership, etc.)
+     */
+    public function getSourceAttribute(): string
+    {
+        if ($this->transaction) {
+            return $this->transaction->reference_no;
+        }
+
+        if ($this->membershipType) {
+            return $this->membershipType->name . ' Membership';
+        }
+
+        return 'N/A';
     }
 
     /**

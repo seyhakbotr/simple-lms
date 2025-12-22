@@ -11,10 +11,23 @@ class Login extends BaseLogin
     {
         parent::mount();
 
+        if (auth()->check() && auth()->user()->role?->name === 'admin') {
+            $this->redirect('/admin');
+        }
+
         $this->form->fill([
             'email' => 'lina@gmail.com',
             'password' => 'staff002',
         ]);
+    }
+
+    public function getRedirectUrl(): string
+    {
+        if (auth()->check() && auth()->user()->role?->name === 'admin') {
+            return url('/admin');
+        }
+
+        return parent::getRedirectUrl();
     }
 
     public function form(Form $form): Form

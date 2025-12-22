@@ -19,10 +19,7 @@ use function Pest\Laravel\seed;
 uses(
     Tests\TestCase::class,
     // Illuminate\Foundation\Testing\RefreshDatabase::class,
-    Illuminate\Foundation\Testing\LazilyRefreshDatabase::class,
-)->beforeEach(function () {
-    seed();
-})->in('Feature', 'Unit');
+)->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------

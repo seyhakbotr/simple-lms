@@ -37,7 +37,7 @@ class InvoiceResource extends Resource
                     Forms\Components\Select::make("transaction_id")
                         ->label("Transaction")
                         ->relationship("transaction", "reference_no")
-                        ->required()
+                        ->required(fn ($get) => $get('membership_type_id') === null)
                         ->searchable()
                         ->preload()
                         ->disabled(fn(?Invoice $record) => $record !== null),
@@ -153,17 +153,16 @@ class InvoiceResource extends Resource
                     ->copyable()
                     ->weight("bold"),
 
-                Tables\Columns\TextColumn::make("transaction.reference_no")
-                    ->label("Transaction")
-                    ->searchable()
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Source')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query
+                            ->whereHas('transaction', fn (Builder $query) => $query->where('reference_no', 'like', "%{$search}%"))
+                            ->orWhereHas('membershipType', fn (Builder $query) => $query->where('name', 'like', "%{$search}%"));
+                    })
                     ->sortable()
-                    ->url(
-                        fn(Invoice $record) => route(
-                            "filament.admin.resources.transactions.view",
-                            ["record" => $record->transaction_id],
-                        ),
-                    )
-                    ->color("primary"),
+                    ->url(fn (Invoice $record): ?string => $record->transaction ? route('filament.admin.resources.transactions.view', ['record' => $record->transaction_id]) : null)
+                    ->color(fn (Invoice $record): string => $record->transaction ? 'primary' : 'gray'),
 
                 Tables\Columns\TextColumn::make("user.name")
                     ->label("Borrower")

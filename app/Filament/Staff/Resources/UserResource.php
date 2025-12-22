@@ -3,6 +3,7 @@
 namespace App\Filament\Staff\Resources;
 
 use App\Filament\Staff\Resources\UserResource\Pages;
+use App\Filament\Staff\Resources\UserResource\RelationManagers\MembershipInvoicesRelationManager;
 use App\Http\Traits\BorrowerCount;
 use App\Models\Role;
 use App\Models\User;
@@ -145,7 +146,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            MembershipInvoicesRelationManager::class,
         ];
     }
 

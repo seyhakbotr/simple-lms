@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MembershipType;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\User;
@@ -79,6 +80,65 @@ class InvoiceService
                     "overdue_fee" => $feeBreakdown["overdue"],
                     "lost_fee" => $feeBreakdown["lost"],
                     "damage_fee" => $feeBreakdown["damage"],
+                ],
+            );
+
+            return $invoice;
+        });
+    }
+
+    /**
+     * Generate an invoice for a new membership
+     *
+     * @param User $user
+     * @param MembershipType $membershipType
+     * @param int $paymentDueDays Number of days until payment is due (default: 30)
+     * @return Invoice|null Returns null if membership fee is zero
+     */
+    public function generateInvoiceForMembership(
+        User $user,
+        MembershipType $membershipType,
+        int $paymentDueDays = 30,
+    ): ?Invoice {
+        $membershipFee = $membershipType->membership_fee;
+
+        if ($membershipFee <= 0) {
+            Log::info(
+                "No membership fee to invoice for user {$user->id} and membership type {$membershipType->id}",
+            );
+            return null;
+        }
+
+        return DB::transaction(function () use (
+            $user,
+            $membershipType,
+            $membershipFee,
+            $paymentDueDays,
+        ) {
+            $invoiceDate = Carbon::now();
+            $dueDate = $invoiceDate->copy()->addDays($paymentDueDays);
+
+            $invoice = Invoice::create([
+                "transaction_id" => null, // Nullable after migration
+                "membership_type_id" => $membershipType->id,
+                "user_id" => $user->id,
+                "overdue_fee" => 0,
+                "lost_fee" => 0,
+                "damage_fee" => 0,
+                "total_amount" => $membershipFee, // Already in dollars, MoneyCast will handle
+                "amount_paid" => 0,
+                "amount_due" => $membershipFee, // Already in dollars, MoneyCast will handle
+                "status" => "unpaid",
+                "invoice_date" => $invoiceDate,
+                "due_date" => $dueDate,
+                "notes" => "Membership fee for {$membershipType->name} membership",
+            ]);
+
+            Log::info(
+                "Invoice {$invoice->invoice_number} generated for user {$user->id} membership",
+                [
+                    "membership_type_id" => $membershipType->id,
+                    "total_amount" => $membershipFee,
                 ],
             );
 

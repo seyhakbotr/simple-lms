@@ -82,6 +82,11 @@ class User extends Authenticatable implements
         return $this->hasMany(Transaction::class);
     }
 
+    public function membershipInvoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->whereNotNull('membership_type_id');
+    }
+
     /**
      * Check if membership is active
      */
@@ -156,13 +161,15 @@ class User extends Authenticatable implements
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $role = auth()->user()->role->name;
+        $role = $this->role?->name;
 
-        return match ($panel->getId()) {
-            "admin" => $role == "admin",
-            "staff" => $role == "staff",
+        $canAccessPanel = match ($panel->getId()) {
+            'admin' => $role === 'admin',
+            'staff' => in_array($role, ['admin', 'staff'], true),
             default => false,
-        } && $this->hasVerifiedEmail();
+        };
+
+        return $canAccessPanel && $this->hasVerifiedEmail();
     }
 
     public function getFilamentAvatarUrl(): ?string
