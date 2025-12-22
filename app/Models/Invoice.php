@@ -119,19 +119,16 @@ class Invoice extends Model
      */
     public function recordPayment(float $amount, ?string $notes = null): void
     {
-        $amountInCents = (int) ($amount * 100);
-        $newAmountPaid = $this->getRawOriginal("amount_paid") + $amountInCents;
-        $totalAmountInCents = $this->getRawOriginal("total_amount");
+        // Work entirely in dollars - MoneyCast handles conversion to cents
+        $newAmountPaid = $this->amount_paid + $amount;
+        $totalAmount = $this->total_amount;
 
         $this->update([
-            "amount_paid" => $newAmountPaid,
-            "amount_due" => max(0, $totalAmountInCents - $newAmountPaid),
-            "status" => $this->determineStatus(
-                $newAmountPaid,
-                $totalAmountInCents,
-            ),
+            "amount_paid" => $newAmountPaid, // MoneyCast converts to cents automatically
+            "amount_due" => max(0, $totalAmount - $newAmountPaid), // MoneyCast converts to cents automatically
+            "status" => $this->determineStatus($newAmountPaid, $totalAmount),
             "paid_at" =>
-                $newAmountPaid >= $totalAmountInCents ? now() : $this->paid_at,
+                $newAmountPaid >= $totalAmount ? now() : $this->paid_at,
             "notes" => $notes
                 ? ($this->notes
                     ? $this->notes . "\n" . $notes
@@ -144,8 +141,8 @@ class Invoice extends Model
      * Determine invoice status based on payment
      */
     protected function determineStatus(
-        int $amountPaid,
-        int $totalAmount,
+        float $amountPaid,
+        float $totalAmount,
     ): string {
         if ($amountPaid >= $totalAmount) {
             return "paid";

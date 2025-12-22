@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
-    public function __construct(protected FeeCalculator $feeCalculator)
-    {
-    }
+    public function __construct(protected FeeCalculator $feeCalculator) {}
 
     /**
      * Generate an invoice for a returned transaction
@@ -61,17 +59,17 @@ class InvoiceService
             $invoice = Invoice::create([
                 "transaction_id" => $transaction->id,
                 "user_id" => $transaction->user_id,
-                "overdue_fee" => $feeBreakdown["overdue"],
-                "lost_fee" => $feeBreakdown["lost"],
-                "damage_fee" => $feeBreakdown["damage"],
-                "total_amount" => $feeBreakdown["total"],
+                "overdue_fee" => $feeBreakdown["overdue"] / 100,
+                "lost_fee" => $feeBreakdown["lost"] / 100,
+                "damage_fee" => $feeBreakdown["damage"] / 100,
+                "total_amount" => $feeBreakdown["total"] / 100,
                 "amount_paid" => 0,
-                "amount_due" => $feeBreakdown["total"],
+                "amount_due" => $feeBreakdown["total"] / 100,
                 "status" => "unpaid",
                 "invoice_date" => $transaction->returned_date,
-                "due_date" => Carbon::parse($transaction->returned_date)->addDays(
-                    $paymentDueDays,
-                ),
+                "due_date" => Carbon::parse(
+                    $transaction->returned_date,
+                )->addDays($paymentDueDays),
             ]);
 
             Log::info(
@@ -133,7 +131,9 @@ class InvoiceService
         ?string $notes = null,
     ): Invoice {
         if ($amount <= 0) {
-            throw new \InvalidArgumentException("Payment amount must be positive");
+            throw new \InvalidArgumentException(
+                "Payment amount must be positive",
+            );
         }
 
         if ($invoice->isPaid()) {
@@ -142,7 +142,7 @@ class InvoiceService
             );
         }
 
-        // Ensure we don't overpay
+        // Compare dollars to dollars (MoneyCast returns dollars)
         $maxPayment = $invoice->amount_due;
         if ($amount > $maxPayment) {
             throw new \InvalidArgumentException(
@@ -151,7 +151,8 @@ class InvoiceService
             );
         }
 
-        $paymentNote = "Payment received: " . $this->feeCalculator->formatFine($amount);
+        $paymentNote =
+            "Payment received: " . $this->feeCalculator->formatFine($amount);
         if ($paymentMethod) {
             $paymentNote .= " via {$paymentMethod}";
         }
@@ -159,41 +160,14 @@ class InvoiceService
             $paymentNote .= " - {$notes}";
         }
 
+        // Pass dollars - Invoice model's recordPayment and MoneyCast handle conversion
+
         $invoice->recordPayment($amount, $paymentNote);
 
         Log::info("Payment recorded for invoice {$invoice->invoice_number}", [
             "amount" => $amount,
             "payment_method" => $paymentMethod,
             "new_status" => $invoice->status,
-        ]);
-
-        return $invoice->fresh();
-    }
-
-    /**
-     * Waive an invoice
-     *
-     * @param Invoice $invoice
-     * @param string|null $reason
-     * @return Invoice
-     */
-    public function waiveInvoice(Invoice $invoice, ?string $reason = null): Invoice
-    {
-        if ($invoice->isPaid()) {
-            throw new \InvalidArgumentException(
-                "Cannot waive a paid invoice",
-            );
-        }
-
-        $waiveNote = "Invoice waived";
-        if ($reason) {
-            $waiveNote .= " - Reason: {$reason}";
-        }
-
-        $invoice->waive($waiveNote);
-
-        Log::info("Invoice {$invoice->invoice_number} waived", [
-            "reason" => $reason,
         ]);
 
         return $invoice->fresh();
@@ -308,9 +282,13 @@ class InvoiceService
             ],
             "transaction" => [
                 "reference_no" => $transaction->reference_no,
-                "borrowed_date" => $transaction->borrowed_date->format("M d, Y"),
+                "borrowed_date" => $transaction->borrowed_date->format(
+                    "M d, Y",
+                ),
                 "due_date" => $transaction->due_date->format("M d, Y"),
-                "returned_date" => $transaction->returned_date->format("M d, Y"),
+                "returned_date" => $transaction->returned_date->format(
+                    "M d, Y",
+                ),
                 "status" => $transaction->status->value,
             ],
             "items" => $transaction->items->map(function ($item) {

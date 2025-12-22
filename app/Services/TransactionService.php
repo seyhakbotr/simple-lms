@@ -250,7 +250,7 @@ class TransactionService
                 "items.book",
                 "user.membershipType",
             ]);
-
+            
             // Generate invoice if there are any fees
             $invoice = $this->invoiceService->generateInvoiceForTransaction(
                 $transaction,
