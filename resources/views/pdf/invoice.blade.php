@@ -14,11 +14,7 @@
             font-size: 12px;
             color: #333;
             line-height: 1.5;
-        }
-        .container {
             padding: 40px;
-            max-width: 800px;
-            margin: 0 auto;
         }
         .header {
             display: table;
@@ -29,18 +25,22 @@
         }
         .header-left {
             display: table-cell;
-            width: 50%;
+            width: 60%;
             vertical-align: top;
         }
         .header-right {
             display: table-cell;
-            width: 50%;
+            width: 40%;
             text-align: right;
             vertical-align: top;
         }
+        .logo {
+            margin-bottom: 10px;
+        }
         .company-name {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
+            color: #000;
             margin-bottom: 5px;
         }
         .invoice-title {
@@ -48,369 +48,223 @@
             font-weight: bold;
             color: #000;
         }
-        .invoice-info {
-            margin-top: 10px;
-        }
         .invoice-info div {
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
         .section {
             margin-bottom: 25px;
         }
         .section-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #000;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 3px;
         }
-        .info-grid {
-            display: table;
+        .info-table {
             width: 100%;
+            border-collapse: collapse;
         }
-        .info-row {
-            display: table-row;
+        .info-table td {
+            padding: 4px 0;
+            vertical-align: top;
         }
-        .info-label {
-            display: table-cell;
+        .label {
             font-weight: bold;
-            width: 150px;
-            padding: 5px 0;
-        }
-        .info-value {
-            display: table-cell;
-            padding: 5px 0;
+            width: 140px;
         }
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .items-table thead {
-            background-color: #f0f0f0;
+            margin-top: 15px;
         }
         .items-table th {
+            background-color: #f8f8f8;
             padding: 10px;
             text-align: left;
-            font-weight: bold;
-            border-bottom: 2px solid #000;
             font-size: 11px;
+            border-bottom: 2px solid #000;
         }
         .items-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #ddd;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
             font-size: 11px;
         }
-        .items-table th.right,
-        .items-table td.right {
-            text-align: right;
-        }
-        .book-title {
-            font-weight: bold;
-            color: #000;
-        }
-        .book-isbn {
-            color: #666;
-            font-size: 10px;
-        }
-        .item-status {
-            display: inline-block;
-            padding: 2px 8px;
+        .right { text-align: right; }
+        .book-title { font-weight: bold; display: block; }
+        .book-isbn { color: #666; font-size: 10px; }
+
+        .status-badge {
+            padding: 3px 8px;
             border-radius: 3px;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
         }
-        .item-status-returned {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-        .item-status-lost {
-            background-color: #fee;
-            color: #c00;
-        }
-        .item-status-damaged {
-            background-color: #ffeaa7;
-            color: #d63031;
-        }
-        .totals {
+        .status-paid { background-color: #dff0d8; color: #3c763d; }
+        .status-unpaid { background-color: #f2dede; color: #a94442; }
+
+        .totals-container {
             margin-top: 20px;
-            float: right;
-            width: 350px;
-        }
-        .totals table {
             width: 100%;
+        }
+        .totals-table {
+            width: 300px;
+            float: right;
             border-collapse: collapse;
         }
-        .totals td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #ddd;
+        .totals-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
         }
-        .totals td:first-child {
-            text-align: left;
+        .total-row {
             font-weight: bold;
-        }
-        .totals td:last-child {
-            text-align: right;
-        }
-        .totals .total-row td {
-            border-top: 2px solid #000;
-            border-bottom: 2px solid #000;
-            font-size: 16px;
-            font-weight: bold;
-            padding: 12px 10px;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-        .status-unpaid {
-            background-color: #fee;
-            color: #c00;
-        }
-        .status-partially_paid {
-            background-color: #ffeaa7;
-            color: #d63031;
-        }
-        .status-paid {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-        .status-waived {
-            background-color: #e0e0e0;
-            color: #666;
-        }
-        .overdue-banner {
-            background-color: #fee;
-            border: 2px solid #c00;
-            padding: 10px 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            color: #c00;
-            font-weight: bold;
-        }
-        .transaction-box {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-left: 3px solid #666;
-            margin-bottom: 20px;
-        }
-        .notes-box {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #fffbf0;
-            border-left: 3px solid #f39c12;
-        }
-        .damage-notes {
-            font-style: italic;
-            color: #d63031;
-            font-size: 10px;
-            margin-top: 3px;
+            font-size: 14px;
+            background-color: #fcfcfc;
         }
         .footer {
             margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
             text-align: center;
             font-size: 10px;
-            color: #666;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
+            color: #777;
         }
-        .clearfix::after {
-            content: "";
-            display: table;
-            clear: both;
+        .overdue-banner {
+            background-color: #f2dede;
+            color: #a94442;
+            padding: 10px;
+            border: 1px solid #ebccd1;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <div class="company-name">Your Library Name</div>
-                <div>123 Library Street</div>
-                <div>City, State 12345</div>
-                <div>Phone: (123) 456-7890</div>
-                <div>Email: library@example.com</div>
-            </div>
-            <div class="header-right">
-                <div class="invoice-title">INVOICE</div>
-                <div class="invoice-info">
-                    <div><strong>#{{ $data['invoice_number'] }}</strong></div>
-                    <div>Invoice Date: {{ $data['invoice_date'] }}</div>
-                    <div>Due Date: {{ $data['due_date'] }}</div>
+
+    <div class="header">
+        <div class="header-left">
+            @if(app(\App\Settings\GeneralSettings::class)->site_logo)
+                <div class="logo">
+                    <img src="{{ public_path('storage/' . app(\App\Settings\GeneralSettings::class)->site_logo) }}"
+                         style="height: {{ app(\App\Settings\GeneralSettings::class)->site_logoHeight ?? '60' }}px;">
+                </div>
+            @endif
+            <div class="company-name">{{ $data['site']['name'] }}</div>
+            <div>{{ $data['site']['address'] }}</div>
+            <div>{{ $data['site']['city'] }}, {{ $data['site']['state'] }} {{ $data['site']['zip'] }}</div>
+            <div>Phone: {{ $data['site']['phone'] }}</div>
+            <div>Email: {{ $data['site']['email'] }}</div>
+        </div>
+        <div class="header-right">
+            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-info">
+                <div><strong>No: {{ $data['invoice_number'] }}</strong></div>
+                <div>Date: {{ $data['invoice_date'] }}</div>
+                <div>Due Date: {{ $data['due_date'] }}</div>
+                <div style="margin-top:10px;">
+                    <span class="status-badge status-{{ strtolower($data['status']) }}">
+                        {{ $data['status'] }}
+                    </span>
                 </div>
             </div>
-        </div>
-
-        <!-- Overdue Warning -->
-        @if($data['is_overdue'])
-        <div class="overdue-banner">
-            ⚠ OVERDUE: This invoice is {{ $data['days_overdue'] }} day(s) past due
-        </div>
-        @endif
-
-        <!-- Invoice Status -->
-        <div class="section">
-            <span class="status-badge status-{{ strtolower(str_replace(' ', '_', $data['status'])) }}">
-                {{ $data['status'] }}
-            </span>
-        </div>
-
-        <!-- Bill To Section -->
-        <div class="section">
-            <div class="section-title">Bill To:</div>
-            <div class="info-grid">
-                <div class="info-row">
-                    <div class="info-label">Member Name:</div>
-                    <div class="info-value">{{ $data['borrower']['name'] }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Email:</div>
-                    <div class="info-value">{{ $data['borrower']['email'] }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Membership Type:</div>
-                    <div class="info-value">{{ $data['borrower']['membership_type'] }}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Transaction Details -->
-        <div class="transaction-box">
-            <div class="section-title" style="border: none; padding-bottom: 10px;">Transaction Details</div>
-            <div class="info-grid">
-                <div class="info-row">
-                    <div class="info-label">Reference No:</div>
-                    <div class="info-value">{{ $data['transaction']['reference_no'] }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Borrowed Date:</div>
-                    <div class="info-value">{{ $data['transaction']['borrowed_date'] }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Original Due Date:</div>
-                    <div class="info-value">{{ $data['transaction']['due_date'] }}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Returned Date:</div>
-                    <div class="info-value">{{ $data['transaction']['returned_date'] }}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Items and Fees -->
-        <div class="section">
-            <div class="section-title">Borrowed Items & Fees</div>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Book Title / ISBN</th>
-                        <th>Status</th>
-                        <th class="right">Overdue</th>
-                        <th class="right">Lost</th>
-                        <th class="right">Damage</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($data['items'] as $item)
-                    <tr>
-                        <td>
-                            <div class="book-title">{{ $item['book_title'] }}</div>
-                            <div class="book-isbn">ISBN: {{ $item['isbn'] }}</div>
-                            @if($item['damage_notes'])
-                            <div class="damage-notes">Note: {{ $item['damage_notes'] }}</div>
-                            @endif
-                        </td>
-                        <td>
-                            <span class="item-status item-status-{{ strtolower($item['item_status']) }}">
-                                {{ $item['item_status'] }}
-                            </span>
-                        </td>
-                        <td class="right">{{ $item['overdue_fine'] }}</td>
-                        <td class="right">{{ $item['lost_fine'] }}</td>
-                        <td class="right">{{ $item['damage_fine'] }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Fee Summary -->
-        <div class="section">
-            <div class="section-title">Fee Summary</div>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Fee Type</th>
-                        <th class="right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if($data['fees']['overdue'] !== '$0.00')
-                    <tr>
-                        <td>Overdue Fees</td>
-                        <td class="right">{{ $data['fees']['overdue'] }}</td>
-                    </tr>
-                    @endif
-                    @if($data['fees']['lost'] !== '$0.00')
-                    <tr>
-                        <td>Lost Item Fees</td>
-                        <td class="right">{{ $data['fees']['lost'] }}</td>
-                    </tr>
-                    @endif
-                    @if($data['fees']['damage'] !== '$0.00')
-                    <tr>
-                        <td>Damage Fees</td>
-                        <td class="right">{{ $data['fees']['damage'] }}</td>
-                    </tr>
-                    @endif
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Totals -->
-        <div class="totals clearfix">
-            <table>
-                <tr>
-                    <td>Total Fees:</td>
-                    <td>{{ $data['fees']['total'] }}</td>
-                </tr>
-                @if($data['fees']['amount_paid'] !== '$0.00')
-                <tr>
-                    <td>Amount Paid:</td>
-                    <td>-{{ $data['fees']['amount_paid'] }}</td>
-                </tr>
-                @endif
-                <tr class="total-row">
-                    <td>Amount Due:</td>
-                    <td>{{ $data['fees']['amount_due'] }}</td>
-                </tr>
-            </table>
-        </div>
-
-        <div style="clear: both;"></div>
-
-        <!-- Notes -->
-        @if($data['notes'])
-        <div class="notes-box">
-            <div class="section-title" style="border: none; padding-bottom: 5px;">Additional Notes:</div>
-            <div>{{ $data['notes'] }}</div>
-        </div>
-        @endif
-
-        <!-- Footer -->
-        <div class="footer">
-            <p><strong>Payment Instructions:</strong></p>
-            <p>Please remit payment to the library circulation desk or contact us to arrange payment.</p>
-            <p style="margin-top: 10px;">If you have any questions about this invoice, please contact us at library@example.com</p>
-            <p style="margin-top: 10px;">Thank you for being a valued member of our library!</p>
         </div>
     </div>
+
+    @if($data['is_overdue'])
+    <div class="overdue-banner">
+        ⚠ OVERDUE: This invoice is {{ $data['days_overdue'] }} day(s) past due.
+    </div>
+    @endif
+
+    <table style="width: 100%; margin-bottom: 20px;">
+        <tr>
+            <td style="width: 50%; vertical-align: top;">
+                <div class="section-title">Bill To:</div>
+                <table class="info-table">
+                    <tr><td class="label">Member:</td><td>{{ $data['borrower']['name'] }}</td></tr>
+                    <tr><td class="label">Email:</td><td>{{ $data['borrower']['email'] }}</td></tr>
+                    <tr><td class="label">Type:</td><td>{{ $data['borrower']['membership_type'] }}</td></tr>
+                </table>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 40px;">
+                <div class="section-title">Reference:</div>
+                <table class="info-table">
+                    <tr><td class="label">Ref No:</td><td>{{ $data['transaction']['reference_no'] }}</td></tr>
+                    <tr><td class="label">Borrowed:</td><td>{{ $data['transaction']['borrowed_date'] }}</td></tr>
+                    <tr><td class="label">Returned:</td><td>{{ $data['transaction']['returned_date'] }}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section">
+        <div class="section-title">Borrowed Items & Fine Details</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Description</th>
+                    <th>Status</th>
+                    <th class="right">Overdue</th>
+                    <th class="right">Lost</th>
+                    <th class="right">Damage</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($data['items'] as $item)
+                <tr>
+                    <td>
+                        <span class="book-title">{{ $item['book_title'] }}</span>
+                        <span class="book-isbn">ISBN: {{ $item['isbn'] }}</span>
+                        @if($item['damage_notes'])
+                            <div style="color: #d63031; font-style: italic; font-size: 9px;">Note: {{ $item['damage_notes'] }}</div>
+                        @endif
+                    </td>
+                    <td>{{ $item['item_status'] }}</td>
+                    <td class="right">{{ $item['overdue_fine'] }}</td>
+                    <td class="right">{{ $item['lost_fine'] }}</td>
+                    <td class="right">{{ $item['damage_fine'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="totals-container">
+        <table class="totals-table">
+            <tr>
+                <td>Total Fees</td>
+                <td class="right">{{ $data['fees']['total'] }}</td>
+            </tr>
+            @if($data['fees']['amount_paid'] !== '$0.00')
+            <tr>
+                <td>Amount Paid</td>
+                <td class="right">-{{ $data['fees']['amount_paid'] }}</td>
+            </tr>
+            @endif
+            <tr class="total-row">
+                <td>Amount Due</td>
+                <td class="right">{{ $data['fees']['amount_due'] }}</td>
+            </tr>
+        </table>
+        <div style="clear: both;"></div>
+    </div>
+
+    @if($data['notes'])
+    <div style="margin-top: 30px; padding: 10px; background: #fffcf0; border-left: 3px solid #f39c12;">
+        <strong>Notes:</strong><br>
+        {{ $data['notes'] }}
+    </div>
+    @endif
+
+    <div class="footer">
+        <p><strong>Payment Instructions</strong></p>
+        <p>Please pay at the {{ $data['site']['name'] }} circulation desk.</p>
+        <p style="margin-top: 5px;">Contact us: {{ $data['site']['email'] }} | {{ $data['site']['phone'] }}</p>
+        <p style="margin-top: 15px;">Thank you for using our library services!</p>
+    </div>
+
 </body>
 </html>

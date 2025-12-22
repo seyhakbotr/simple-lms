@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use App\Settings\GeneralSettings;
 class InvoiceService
 {
     public function __construct(protected FeeCalculator $feeCalculator) {}
@@ -262,6 +262,8 @@ class InvoiceService
      */
     public function getInvoiceData(Invoice $invoice): array
     {
+        $settings = app(GeneralSettings::class);
+
         $transaction = $invoice->transaction->load([
             "items.book",
             "user.membershipType",
@@ -290,6 +292,15 @@ class InvoiceService
                     "M d, Y",
                 ),
                 "status" => $transaction->status->value,
+            ],
+            "site" => [
+                "name" => $settings->site_name,
+                "address" => $settings->site_address,
+                "city" => $settings->site_city,
+                "state" => $settings->site_state,
+                "zip" => $settings->site_zip,
+                "phone" => $settings->site_phone,
+                "email" => $settings->site_email,
             ],
             "items" => $transaction->items->map(function ($item) {
                 return [
