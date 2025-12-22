@@ -4,10 +4,12 @@ namespace App\Filament\Admin\Resources\ReportsResource\Pages;
 
 use App\Filament\Admin\Resources\ReportsResource;
 use App\Models\Book;
+use App\Models\Genre;
 use App\Models\Transaction;
 use Filament\Resources\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
 
@@ -78,6 +80,13 @@ class BookReports extends Page
                     ->label("Current Stock")
                     ->badge()
                     ->color(fn($state) => $state > 0 ? "info" : "danger"),
+            ])
+            ->filters([
+                SelectFilter::make('genre')
+                    ->relationship('genre', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->label('Filter by Genre'),
             ])
             ->defaultSort("transaction_items_count", "desc")
             ->paginated(false);

@@ -23,12 +23,16 @@ class ListTransactions extends ListRecords
     {
         return [
             'All' => Tab::make(),
-            'Borrowed' => Tab::make()
-                ->modifyQueryUsing(fn ($query) => $query->whereStatus(BorrowedStatus::Borrowed)),
-            'Returned' => Tab::make()
-                ->modifyQueryUsing(fn ($query) => $query->whereStatus(BorrowedStatus::Returned)),
-            'Delayed' => Tab::make()
-                ->modifyQueryUsing(fn ($query) => $query->whereStatus(BorrowedStatus::Delayed)),
+            'Active' => Tab::make('Active')
+                ->modifyQueryUsing(fn ($query) => $query->active()),
+            'Overdue' => Tab::make('Overdue')
+                ->modifyQueryUsing(fn ($query) => $query->overdue()),
+            'Completed' => Tab::make('Completed')
+                ->modifyQueryUsing(fn ($query) => $query->completed()),
+            'Cancelled' => Tab::make('Cancelled')
+                ->modifyQueryUsing(fn ($query) => $query->where('lifecycle_status', LifecycleStatus::Cancelled)),
+            'Archived' => Tab::make('Archived')
+                ->modifyQueryUsing(fn ($query) => $query->where('lifecycle_status', LifecycleStatus::Archived)),
         ];
     }
 }

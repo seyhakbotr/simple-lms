@@ -169,7 +169,15 @@ class User extends Authenticatable implements
             default => false,
         };
 
-        return $canAccessPanel && $this->hasVerifiedEmail();
+        if (! $canAccessPanel) {
+            return false;
+        }
+
+        if ($panel->getId() === 'admin') {
+            return $this->hasVerifiedEmail();
+        }
+
+        return true;
     }
 
     public function getFilamentAvatarUrl(): ?string

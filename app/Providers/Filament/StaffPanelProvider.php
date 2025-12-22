@@ -36,7 +36,6 @@ class StaffPanelProvider extends PanelProvider
             ->registration(Register::class)
             ->passwordReset()
             ->profile(EditProfile::class)
-            ->emailVerification()
             ->favicon(fn (GeneralSettings $settings) => Storage::disk('public')
                 ->url($settings->site_favicon))
             ->brandName(fn (GeneralSettings $settings) => $settings->site_name)
