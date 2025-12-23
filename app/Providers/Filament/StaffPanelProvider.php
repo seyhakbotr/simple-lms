@@ -33,7 +33,7 @@ class StaffPanelProvider extends PanelProvider
             ->id('staff')
             ->path('staff')
             ->login(Login::class)
-            ->registration(Register::class)
+
             ->passwordReset()
             ->profile(EditProfile::class)
             ->favicon(fn (GeneralSettings $settings) => Storage::disk('public')

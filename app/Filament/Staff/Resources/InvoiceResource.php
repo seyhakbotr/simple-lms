@@ -32,7 +32,8 @@ class InvoiceResource extends Resource
                     Forms\Components\TextInput::make("invoice_number")
                         ->label("Invoice Number")
                         ->disabled()
-                        ->dehydrated(false),
+                        ->dehydrated(false)
+                        ->default(fn() => Invoice::generateInvoiceNumber()),
 
                     Forms\Components\Select::make("transaction_id")
                         ->label("Transaction")
@@ -40,7 +41,22 @@ class InvoiceResource extends Resource
                         ->required(fn ($get) => $get('membership_type_id') === null)
                         ->searchable()
                         ->preload()
-                        ->disabled(),
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                            $transaction = \App\Models\Transaction::find($state);
+                            if ($transaction) {
+                                $set('user_id', $transaction->user_id);
+
+                                // Calculate overdue fees from transaction items
+                                $overdue_fee = $transaction->items->sum('overdue_fine');
+                                $set('overdue_fee', $overdue_fee / 100);
+
+                                // update total amount
+                                $total_amount = $overdue_fee / 100 + ($get('lost_fee') ?? 0) + ($get('damage_fee') ?? 0);
+                                $set('total_amount', $total_amount);
+                            }
+                        })
+                        ->disabled(fn(?Invoice $record) => $record !== null),
 
                     Forms\Components\Select::make("user_id")
                         ->label("Borrower")
@@ -48,7 +64,8 @@ class InvoiceResource extends Resource
                         ->required()
                         ->searchable()
                         ->preload()
-                        ->disabled(),
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
                 ])
                 ->columns(3),
 
@@ -58,24 +75,31 @@ class InvoiceResource extends Resource
                         ->label("Overdue Fee")
                         ->numeric()
                         ->prefix('$')
-                        ->disabled(),
+                        ->default(0)
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("lost_fee")
                         ->label("Lost Book Fee")
                         ->numeric()
                         ->prefix('$')
-                        ->disabled(),
+                        ->default(0)
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("damage_fee")
                         ->label("Damage Fee")
                         ->numeric()
                         ->prefix('$')
-                        ->disabled(),
+                        ->default(0)
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("total_amount")
                         ->label("Total Amount")
                         ->numeric()
                         ->prefix('$')
+                        ->required()
                         ->disabled(),
                 ])
                 ->columns(4),
@@ -86,12 +110,14 @@ class InvoiceResource extends Resource
                         ->label("Amount Paid")
                         ->numeric()
                         ->prefix('$')
+                        ->default(0)
                         ->disabled(),
 
                     Forms\Components\TextInput::make("amount_due")
                         ->label("Amount Due")
                         ->numeric()
                         ->prefix('$')
+                        ->required()
                         ->disabled(),
 
                     Forms\Components\Select::make("status")
@@ -102,6 +128,7 @@ class InvoiceResource extends Resource
                             "paid" => "Paid",
                             "waived" => "Waived",
                         ])
+                        ->required()
                         ->disabled(),
                 ])
                 ->columns(3),
@@ -110,8 +137,7 @@ class InvoiceResource extends Resource
                 Forms\Components\Textarea::make("notes")
                     ->label("Notes")
                     ->rows(3)
-                    ->columnSpanFull()
-                    ->disabled(),
+                    ->columnSpanFull(),
             ]),
         ]);
     }
@@ -365,6 +391,8 @@ class InvoiceResource extends Resource
     {
         return [
             "index" => Pages\ListInvoices::route("/"),
+            "create" => Pages\CreateInvoice::route("/create"),
+            "edit" => Pages\EditInvoice::route("/{record}/edit"),
             "view" => Pages\ViewInvoice::route("/{record}"),
         ];
     }

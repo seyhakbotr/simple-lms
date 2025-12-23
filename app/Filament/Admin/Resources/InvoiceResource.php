@@ -40,6 +40,21 @@ class InvoiceResource extends Resource
                         ->required(fn ($get) => $get('membership_type_id') === null)
                         ->searchable()
                         ->preload()
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                            $transaction = \App\Models\Transaction::find($state);
+                            if ($transaction) {
+                                $set('user_id', $transaction->user_id);
+
+                                // Calculate overdue fees from transaction items
+                                $overdue_fee = $transaction->items->sum('overdue_fine');
+                                $set('overdue_fee', $overdue_fee / 100);
+
+                                // update total amount
+                                $total_amount = $overdue_fee / 100 + ($get('lost_fee') ?? 0) + ($get('damage_fee') ?? 0);
+                                $set('total_amount', $total_amount);
+                            }
+                        })
                         ->disabled(fn(?Invoice $record) => $record !== null),
 
                     Forms\Components\Select::make("user_id")
@@ -48,7 +63,8 @@ class InvoiceResource extends Resource
                         ->required()
                         ->searchable()
                         ->preload()
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
                 ])
                 ->columns(3),
 
@@ -59,21 +75,24 @@ class InvoiceResource extends Resource
                         ->numeric()
                         ->prefix('$')
                         ->default(0)
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("lost_fee")
                         ->label("Lost Book Fee")
                         ->numeric()
                         ->prefix('$')
                         ->default(0)
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("damage_fee")
                         ->label("Damage Fee")
                         ->numeric()
                         ->prefix('$')
                         ->default(0)
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->disabled(fn(?Invoice $record) => $record !== null)
+                        ->dehydrated(),
 
                     Forms\Components\TextInput::make("total_amount")
                         ->label("Total Amount")
@@ -118,14 +137,12 @@ class InvoiceResource extends Resource
                     Forms\Components\DatePicker::make("invoice_date")
                         ->label("Invoice Date")
                         ->required()
-                        ->default(now())
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->default(now()),
 
                     Forms\Components\DatePicker::make("due_date")
                         ->label("Due Date")
                         ->required()
-                        ->default(now()->addDays(30))
-                        ->disabled(fn(?Invoice $record) => $record !== null),
+                        ->default(now()->addDays(30)),
 
                     Forms\Components\DateTimePicker::make("paid_at")
                         ->label("Paid At")
