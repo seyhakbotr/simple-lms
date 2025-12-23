@@ -324,10 +324,57 @@ class InvoiceService
     {
         $settings = app(GeneralSettings::class);
 
-        $transaction = $invoice->transaction->load([
-            "items.book",
-            "user.membershipType",
-        ]);
+        $borrower = $invoice->user;
+
+        $borrowerData = [
+            'name' => $borrower->name ?? 'N/A',
+            'email' => $borrower->email ?? 'N/A',
+            'membership_type' => $borrower->membershipType?->name ?? 'N/A',
+        ];
+
+        $transactionData = null;
+        $itemsData = collect();
+
+        if ($invoice->transaction) {
+            $transaction = $invoice->transaction->load("items.book");
+
+            $transactionData = [
+                "reference_no" => $transaction->reference_no,
+                "borrowed_date" => $transaction->borrowed_date->format("M d, Y"),
+                "due_date" => $transaction->due_date->format("M d, Y"),
+                "returned_date" => $transaction->returned_date->format("M d, Y"),
+                "status" => $transaction->status->value,
+            ];
+
+            $itemsData = $transaction->items->map(function ($item) {
+                return [
+                    "book_title" => $item->book->title,
+                    "isbn" => $item->book->isbn,
+                    "overdue_fine" => $this->feeCalculator->formatFine($item->overdue_fine),
+                    "lost_fine" => $this->feeCalculator->formatFine($item->lost_fine),
+                    "damage_fine" => $this->feeCalculator->formatFine($item->damage_fine),
+                    "item_status" => $item->item_status,
+                    "damage_notes" => $item->damage_notes,
+                ];
+            });
+        } else {
+            // It's a membership invoice
+            if ($invoice->membership_type_id) {
+                $membershipType = MembershipType::find($invoice->membership_type_id);
+                if ($membershipType) {
+                    $itemsData->push([
+                        'book_title' => 'Membership Fee: ' . $membershipType->name,
+                        'isbn' => '', 
+                        'overdue_fine' => $this->feeCalculator->formatFine(0),
+                        'lost_fine' => $this->feeCalculator->formatFine(0),
+                        'damage_fine' => $this->feeCalculator->formatFine(0),
+                        'item_status' => 'N/A',
+                        'damage_notes' => null,
+                        'is_membership_fee' => true,
+                    ]);
+                }
+            }
+        }
 
         return [
             "invoice_number" => $invoice->invoice_number,
@@ -336,23 +383,8 @@ class InvoiceService
             "status" => ucfirst($invoice->status),
             "is_overdue" => $invoice->isOverdue(),
             "days_overdue" => $invoice->getDaysOverdue(),
-            "borrower" => [
-                "name" => $transaction->user->name,
-                "email" => $transaction->user->email,
-                "membership_type" =>
-                    $transaction->user->membershipType?->name ?? "N/A",
-            ],
-            "transaction" => [
-                "reference_no" => $transaction->reference_no,
-                "borrowed_date" => $transaction->borrowed_date->format(
-                    "M d, Y",
-                ),
-                "due_date" => $transaction->due_date->format("M d, Y"),
-                "returned_date" => $transaction->returned_date->format(
-                    "M d, Y",
-                ),
-                "status" => $transaction->status->value,
-            ],
+            "borrower" => $borrowerData,
+            "transaction" => $transactionData,
             "site" => [
                 "name" => $settings->site_name,
                 "address" => $settings->site_address,
@@ -362,23 +394,7 @@ class InvoiceService
                 "phone" => $settings->site_phone,
                 "email" => $settings->site_email,
             ],
-            "items" => $transaction->items->map(function ($item) {
-                return [
-                    "book_title" => $item->book->title,
-                    "isbn" => $item->book->isbn,
-                    "overdue_fine" => $this->feeCalculator->formatFine(
-                        $item->overdue_fine,
-                    ),
-                    "lost_fine" => $this->feeCalculator->formatFine(
-                        $item->lost_fine,
-                    ),
-                    "damage_fine" => $this->feeCalculator->formatFine(
-                        $item->damage_fine,
-                    ),
-                    "item_status" => $item->item_status,
-                    "damage_notes" => $item->damage_notes,
-                ];
-            }),
+            "items" => $itemsData,
             "fees" => [
                 "overdue" => $invoice->formatted_overdue_fee,
                 "lost" => $invoice->formatted_lost_fee,

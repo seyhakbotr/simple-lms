@@ -179,6 +179,7 @@
     </div>
     @endif
 
+    @if($data['transaction'])
     <table style="width: 100%; margin-bottom: 20px;">
         <tr>
             <td style="width: 50%; vertical-align: top;">
@@ -231,6 +232,28 @@
             </tbody>
         </table>
     </div>
+    @else
+    {{-- Section for Membership Invoice --}}
+    <div class="section">
+        <div class="section-title">Membership Details</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($data['items'] as $item)
+                <tr>
+                    <td>{{ $item['book_title'] }}</td> {{-- e.g., "Membership Fee: Premium Membership" --}}
+                    <td class="right">{{ $data['fees']['total'] }}</td> {{-- Display total amount due for membership --}}
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
 
     <div class="totals-container">
         <table class="totals-table">

@@ -39,37 +39,33 @@ class CreateUser extends CreateRecord
             $membershipType = MembershipType::find($data['membership_type_id']);
 
             if ($membershipType) {
-                // Generate invoice for membership
-                $invoice = $invoiceService->generateInvoiceForMembership(
-                    $user,
-                    $membershipType
-                );
+                if ($membershipType->membership_fee > 0) {
+                    // Generate invoice for membership
+                    $invoice = $invoiceService->generateInvoiceForMembership(
+                        $user,
+                        $membershipType
+                    );
 
-                if ($invoice) {
-                    Notification::make()
-                        ->success()
-                        ->title('Membership invoice generated')
-                        ->body("Invoice {$invoice->invoice_number} generated for membership fee.")
-                        ->send();
-
-                    // Only assign membership dates if an invoice was successfully generated (and thus "paid" conceptually)
-                    $user->membership_type_id = $membershipType->id;
-                    $user->membership_started_at = $data['membership_started_at'] ?? Carbon::now();
-                    $user->membership_expires_at = Carbon::parse($user->membership_started_at)->addMonths($membershipType->membership_duration_months);
-                    $user->save();
-
-                    Notification::make()
-                        ->success()
-                        ->title('Membership assigned')
-                        ->body("User {$user->name} assigned {$membershipType->name} membership.")
-                        ->send();
-                } else {
-                    Notification::make()
-                        ->warning()
-                        ->title('Membership not assigned')
-                        ->body('No invoice generated for membership fee (possibly 0 amount). Membership dates not set.')
-                        ->send();
+                    if ($invoice) {
+                        Notification::make()
+                            ->success()
+                            ->title('Membership invoice generated')
+                            ->body("Invoice {$invoice->invoice_number} generated for membership fee.")
+                            ->send();
+                    } else {
+                        Notification::make()
+                            ->warning()
+                            ->title('Invoice not generated')
+                            ->body('Failed to generate invoice for membership fee.')
+                            ->send();
+                    }
                 }
+
+                Notification::make()
+                    ->success()
+                    ->title('Membership assigned')
+                    ->body("User {$user->name} assigned {$membershipType->name} membership.")
+                    ->send();
             } else {
                 Notification::make()
                     ->danger()

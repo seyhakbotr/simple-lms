@@ -13,6 +13,10 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Section;
+use App\Models\MembershipType;
+use Carbon\Carbon;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
@@ -94,6 +98,54 @@ class UserResource extends Resource
                                             ->default(Role::whereName('borrower')
                                                 ->value('id')),
                                     ]),
+
+                                Section::make("Membership")
+                                    ->schema([
+                                        Select::make("membership_type_id")
+                                            ->relationship(
+                                                "membershipType",
+                                                "name",
+                                                fn($query) => $query->where(
+                                                    "is_active",
+                                                    true,
+                                                ),
+                                            )
+                                            ->label("Membership Type")
+                                            ->native(false)
+                                            ->searchable()
+                                            ->preload()
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $set, $get) {
+                                                $membershipType = \App\Models\MembershipType::find($state);
+                                                if ($membershipType && $get('membership_started_at')) {
+                                                    $set('membership_expires_at', Carbon::parse($get('membership_started_at'))->addMonths($membershipType->membership_duration_months));
+                                                }
+                                            })
+                                            ->helperText(
+                                                "Select membership type for this borrower",
+                                            ),
+
+                                        DatePicker::make("membership_started_at")
+                                            ->label("Started")
+                                            ->native(false)
+                                            ->live()
+                                            ->default(now())
+                                            ->dehydrated(true)
+                                            ->afterStateUpdated(function ($state, $set, $get) {
+                                                $membershipType = \App\Models\MembershipType::find($get('membership_type_id'));
+                                                if ($membershipType && $state) {
+                                                    $set('membership_expires_at', Carbon::parse($state)->addMonths($membershipType->membership_duration_months));
+                                                }
+                                            }),
+
+                                        DatePicker::make("membership_expires_at")
+                                            ->label("Expires")
+                                            ->native(false)
+                                            ->readOnly()
+                                            ->dehydrated(true),
+                                    ])
+                                    ->visible(fn($get) => (int) $get("role_id") === 3)
+                                    ->description("Assign membership to this borrower"),
                             ])->columnSpan(['sm' => 2, 'md' => 1, 'xxl' => 1]),
                     ]),
             ]);

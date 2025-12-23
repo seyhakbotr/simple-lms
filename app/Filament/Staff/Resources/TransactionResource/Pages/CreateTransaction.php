@@ -29,6 +29,15 @@ class CreateTransaction extends CreateRecord
         ];
     }
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (isset($data['borrow_days'])) {
+            $data['borrow_days'] = (int) $data['borrow_days'];
+        }
+
+        return $data;
+    }
+
     protected function handleRecordCreation(array $data): Model
     {
         $transactionService = app(TransactionService::class);

@@ -32,7 +32,7 @@ class InvoiceResource extends Resource
                         ->label("Invoice Number")
                         ->disabled()
                         ->dehydrated(false)
-                        ->default(fn() => Innvoice::generateInvoiceNumber()),
+                        ->default(fn() => Invoice::generateInvoiceNumber()),
 
                     Forms\Components\Select::make("transaction_id")
                         ->label("Transaction")

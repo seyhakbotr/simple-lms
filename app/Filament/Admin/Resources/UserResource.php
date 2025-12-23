@@ -132,17 +132,25 @@ class UserResource extends Resource
                                         "Select membership type for this borrower",
                                     ),
 
+
+
                                 DatePicker::make("membership_started_at")
                                     ->label("Started")
                                     ->native(false)
                                     ->live()
                                     ->default(now())
-                                    ->dehydrated(true),
+                                    ->dehydrated(true)
+                                    ->afterStateUpdated(function ($state, $set, $get) {
+                                        $membershipType = \App\Models\MembershipType::find($get('membership_type_id'));
+                                        if ($membershipType && $state) {
+                                            $set('membership_expires_at', Carbon::parse($state)->addMonths($membershipType->membership_duration_months));
+                                        }
+                                    }),
 
                                 DatePicker::make("membership_expires_at")
                                     ->label("Expires")
                                     ->native(false)
-                                    ->after("membership_started_at")
+                                    ->readOnly()
                                     ->dehydrated(true)
                                     ->helperText(
                                         fn($record) => $record &&

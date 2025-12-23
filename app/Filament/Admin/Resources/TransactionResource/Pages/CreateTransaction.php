@@ -39,6 +39,10 @@ class CreateTransaction extends CreateRecord
             unset($data["transactions"]);
         }
 
+        if (isset($data['borrow_days'])) {
+            $data['borrow_days'] = (int) $data['borrow_days'];
+        }
+
         return $data;
     }
 

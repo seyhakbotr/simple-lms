@@ -44,11 +44,12 @@ class CreateUser extends CreateRecord
         }
 
         if ($membershipType) {
-            // Assign membership to user
-            $user->membership_type_id = $membershipType->id;
-            $user->membership_started_at = Carbon::now();
-            $user->membership_expires_at = Carbon::parse($user->membership_started_at)->addMonths($membershipType->membership_duration_months);
-            $user->save();
+            if (! $user->membership_type_id) {
+                $user->membership_type_id = $membershipType->id;
+                $user->membership_started_at = Carbon::now();
+                $user->membership_expires_at = Carbon::parse($user->membership_started_at)->addMonths($membershipType->membership_duration_months);
+                $user->save();
+            }
             
             Notification::make()
                 ->success()
