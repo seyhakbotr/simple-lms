@@ -16,8 +16,13 @@ class GenreFactory extends Factory
      */
     public function definition(): array
     {
+        $genres = [
+            'Fantasy', 'Science Fiction', 'Mystery', 'Thriller', 'Romance',
+            'Historical Fiction', 'Horror', 'Literary Fiction', 'Non-Fiction', 'Young Adult'
+        ];
+
         return [
-            'name' => fake()->name(),
+            'name' => fake()->unique()->randomElement($genres),
             'bg_color' => fake()->hexColor(),
             'text_color' => fake()->hexColor(),
         ];

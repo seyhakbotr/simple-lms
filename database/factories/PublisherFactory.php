@@ -16,8 +16,13 @@ class PublisherFactory extends Factory
      */
     public function definition(): array
     {
+        $publishers = [
+            'Penguin Random House', 'Hachette Livre', 'HarperCollins', 'Macmillan Publishers', 'Simon & Schuster',
+            'McGraw-Hill Education', 'Scholastic Corporation', 'Pearson Education', 'Oxford University Press', 'Cambridge University Press'
+        ];
+
         return [
-            'name' => fake()->name(),
+            'name' => fake()->unique()->randomElement($publishers),
             'founded' => fake()->dateTimeThisCentury(),
         ];
     }

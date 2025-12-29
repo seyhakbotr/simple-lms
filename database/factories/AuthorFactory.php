@@ -17,11 +17,15 @@ class AuthorFactory extends Factory
      */
     public function definition(): array
     {
+        $authors = [
+            'Stephen King', 'J.K. Rowling', 'George R.R. Martin', 'Haruki Murakami', 'Margaret Atwood',
+            'Neil Gaiman', 'Chimamanda Ngozi Adichie', 'Kazuo Ishiguro', 'Zadie Smith', 'David Mitchell'
+        ];
+
         return [
-            'name' => fake()->name(),
-            'publisher_id' => Publisher::factory(),
+            'name' => fake()->unique()->randomElement($authors),
             'date_of_birth' => fake()->dateTimeThisCentury(),
-            'bio' => fake()->realText(500),
+            'bio' => fake()->realText(200),
         ];
     }
 }
