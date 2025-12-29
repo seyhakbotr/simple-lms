@@ -21,7 +21,6 @@ class Book extends Model implements HasMedia
         "publisher_id",
         "genre_id",
         "title",
-        "cover_image",
         "isbn",
         "price",
         "description",

@@ -133,7 +133,7 @@ class BookResource extends Resource
                 Group::make()
                     ->schema([
                         Section::make()->schema([
-                            SpatieMediaLibraryFileUpload::make("cover_image")
+                            SpatieMediaLibraryFileUpload::make("cover")
                                 ->image()
                                 ->imageEditor()
                                 ->imageEditorAspectRatios(["1:1.6"])
@@ -158,7 +158,7 @@ class BookResource extends Resource
     {
         return $table
             ->columns([
-                SpatieMediaLibraryImageColumn::make("cover_image")
+                SpatieMediaLibraryImageColumn::make("cover")
                     ->collection("coverBooks")
                     ->conversion("thumb"),
                 TextColumn::make("title")->sortable()->searchable(),
