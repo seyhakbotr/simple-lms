@@ -1,17 +1,12 @@
 # Library Management System
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 A modern, feature-rich Library Management System built with Laravel and Filament PHP, designed to manage books, members, transactions, and more in a library setting.
 
 ## Features
 
-- **Book Management**: Add, edit, and manage book inventory
-- **Member Management**: Track library members and their memberships
-- **Transaction System**: Handle book checkouts, returns, and renewals
-- **Stock Management**: Track and adjust book inventory levels
-- **Invoice Generation**: Generate and manage invoices for transactions
-- **User Roles**: Role-based access control for staff and administrators
-- **Reports**: Generate various reports for library operations
-- **Responsive Design**: Works on desktop and mobile devices
+![Book Management](https://img.shields.io/badge/Feature-Book%20Management-2ea44f) ![Member Management](https://img.shields.io/badge/Feature-Member%20Management-2ea44f) ![Transaction System](https://img.shields.io/badge/Feature-Transaction%20System-2ea44f) ![Stock Management](https://img.shields.io/badge/Feature-Stock%20Management-2ea44f) ![Invoice Generation](https://img.shields.io/badge/Feature-Invoice%20Generation-2ea44f) ![User Roles](https://img.shields.io/badge/Feature-User%20Roles-2ea44f) ![Reports](https://img.shields.io/badge/Feature-Reports-2ea44f) ![Responsive Design](https://img.shields.io/badge/Feature-Responsive%20Design-2ea44f)
 
 ## Documentation
 
@@ -75,6 +70,23 @@ Project documentation artifacts are available in the `docs/` folder:
    ```bash
    php artisan migrate --seed
    ```
+
+   This will run all migrations and then execute the `DatabaseSeeder`.
+
+### Seeding
+
+The project includes several seeders to populate the database with initial data. You can run them individually or all at once via the `DatabaseSeeder`.
+
+- **`DatabaseSeeder.php`**: The main seeder that calls other essential seeders.
+- **`RoleSeeder.php`**: Seeds the database with default user roles (e.g., Admin, Staff, Member).
+- **`MembershipTypeSeeder.php`**: Populates the `membership_types` table with default data.
+- **`RealBookSeeder.php`**: Seeds the `books` table with a collection of real book titles and authors for demonstration purposes.
+
+To run a specific seeder, use the `--class` option:
+```bash
+php artisan db:seed --class=RoleSeeder
+php artisan db:seed --class=RealBookSeeder
+```
 
 7. **Create storage link**:
    ```bash
@@ -191,7 +203,7 @@ The system can be configured through the admin panel or by modifying the `.env` 
 
 ## License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This project is open-source and available under the [GNU AGPL v3](LICENSE).
 
 ## Support
 
