@@ -13,8 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
-use Illuminate\Support\Facades\URL;
-
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -30,9 +28,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->isProduction()) {
-            URL::forceScheme('https');
-        }
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Author::class, UserPolicy::class);
         Gate::policy(Publisher::class, UserPolicy::class);
