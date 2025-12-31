@@ -108,16 +108,26 @@ php artisan db:seed --class=RealBookSeeder
    php artisan serve
    ```
 
-2. Open your browser and navigate to:
-   ```
-   http://localhost:8000
-   ```
+2. Open your browser and navigate to the appropriate panel:
 
-3. Login with the default admin credentials:
-   - **Email**: admin@example.com
-   - **Password**: password
+    *   **Admin Panel**: `http://localhost:8000/admin`
+    *   **Staff Panel**: `http://localhost:8000/staff`
 
-   *Note: Change these credentials after first login for security.*
+3. Login with the default credentials:
+
+    #### Admin User
+    The **Admin** role has full access to all system features, including user management, stock management, and system configuration.
+
+    -   **Email**: `admin@gmail.com`
+    -   **Password**: `developer`
+
+    #### Staff User
+    The **Staff** role has access to day-to-day library operations, such as managing books and member transactions, but does not have access to sensitive system settings or stock management.
+
+    -   **Email**: `catherine@gmail.com`
+    -   **Password**: `staff001`
+
+    *Note: For a comprehensive list of all users and roles, please refer to the `LOGIN_CREDENTIALS.md` file. It is recommended to change these default passwords in a production environment.*
 
 ### Key Features
 
