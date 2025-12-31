@@ -131,7 +131,7 @@ class RealBookSeeder extends Seeder
                             'title' => $volumeInfo['title'],
                             'cover_image' => $volumeInfo['imageLinks']['thumbnail'] ?? null,
                             'isbn' => $isbn,
-                            'price' => ($bookData['saleInfo']['listPrice']['amount'] ?? rand(10, 100)) * 100,
+                            'price' => ($bookData['saleInfo']['listPrice']['amount'] ?? rand(10, 100)),
                             'description' => $volumeInfo['description'] ?? 'No description available.',
                             'stock' => rand(5, 50),
                             'available' => true,

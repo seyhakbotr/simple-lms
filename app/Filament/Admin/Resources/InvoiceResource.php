@@ -581,4 +581,9 @@ class InvoiceResource extends Resource
     {
         return "danger";
     }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
 }
