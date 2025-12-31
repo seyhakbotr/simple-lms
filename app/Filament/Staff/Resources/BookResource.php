@@ -120,7 +120,8 @@ class BookResource extends Resource
                                                     ->prefixIcon('heroicon-o-archive-box')
                                                     ->prefixIconColor('white')
                                                     ->numeric()
-                                                    ->required(),
+                                                    ->required()
+                                                    ->readOnly(fn (?Model $record): bool => $record !== null),
                                             ])->columns(3),
                                         RichEditor::make('description')
                                             ->disableToolbarButtons(['attachFiles'])
